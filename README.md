@@ -13,15 +13,7 @@ Takes a media asset, scores it on a spectrum from fully AI-generated (deepfake) 
 
 ## Team
 
-| Name | Role | Team |
-|---|---|---|
-| Javier Cruz | Team Lead | Technical |
-| Maxim Heller | Developer | Technical |
-| Darius-Luca Petruti | Developer | Technical |
-| Alex Garcia Perdriau | Developer | Technical |
-| Jana Eltoni | Researcher | Research |
-| Youssef Ayman | Researcher | Research |
-| Saba Zarandia | QA Engineer | QA |
+TBD
 
 ---
 
