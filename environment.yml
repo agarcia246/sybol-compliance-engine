@@ -1,0 +1,36 @@
+name: sybol-compliance-engine
+
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.11
+  - pip
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn
+  - opencv
+  - pillow
+  - ffmpeg
+  - pip:
+      - fastapi
+      - uvicorn[standard]
+      - pydantic
+      - python-multipart
+      - qdrant-client
+      - llama-index
+      - llama-index-vector-stores-qdrant
+      - transformers
+      - torch
+      - torchvision
+      - mediapipe
+      - exifread
+      - pymupdf
+      - pydantic-settings
+      - requests
+      - pytest
+      - pytest-cov
+      - black
+      - ruff
