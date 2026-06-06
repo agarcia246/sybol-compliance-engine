@@ -1,0 +1,19 @@
+# Test framework & tooling (project doc §3.7).
+# Versions pinned for reproducibility; bump deliberately, not incidentally.
+
+pytest==8.3.4
+pytest-cov==6.0.0
+pytest-asyncio==0.25.2
+pytest-mock==3.14.0
+hypothesis==6.122.3
+jsonschema==4.23.0
+httpx==0.28.1
+
+# Lint / format / type-check (CI: lint -> type-check -> unit -> integration)
+ruff==0.8.4
+black==24.10.0
+mypy==1.14.1
+
+# RAG-specific evaluation harness (used by the RAG eval tests, Phase 2+)
+# ragas==0.2.x        # uncomment when the RAG pipeline lands
+# deepeval==2.x       # uncomment when the RAG pipeline lands
