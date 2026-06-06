@@ -1,6 +1,10 @@
 fastapi
 uvicorn
 llama-index
+llama-index-embeddings-huggingface
+llama-index-vector-stores-qdrant
+llama-index-readers-file
+pymupdf
 sentence-transformers
 qdrant-client
 mistralai
@@ -21,3 +25,5 @@ deepeval
 jsonschema
 python-multipart
 pydantic
+llama-index-llms-mistralai
+python-dotenv
