@@ -1,8 +1,8 @@
-from llama_index.core import SimpleDirectoryReader
-from llama_index.core.node_parser import SentenceSplitter
+import re
 from pathlib import Path
 
-import re
+from llama_index.core import SimpleDirectoryReader
+from llama_index.core.node_parser import SentenceSplitter
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 REGULATIONS_DIR = PROJECT_ROOT / "research" / "regulations"

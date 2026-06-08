@@ -1,5 +1,3 @@
-from typing import List
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -16,4 +14,4 @@ class ComplianceResult(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     summary: str
-    regulation_refs: List[RegulationRef] = Field(alias="regulationRefs")
+    regulation_refs: list[RegulationRef] = Field(alias="regulationRefs")
