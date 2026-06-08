@@ -1,4 +1,4 @@
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, File, UploadFile
 from api.schemas import ScoreBreakdown
 router = APIRouter()
 

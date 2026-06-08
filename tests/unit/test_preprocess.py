@@ -1,7 +1,6 @@
 import hashlib
 
 import pytest
-from PIL import Image
 
 from scoring.preprocess import ScoringError, preprocess
 
