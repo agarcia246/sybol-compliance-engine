@@ -1,6 +1,8 @@
+import io
 from unittest.mock import MagicMock
 
 import pytest
+from PIL import Image
 
 
 @pytest.fixture(autouse=True)
@@ -64,3 +66,44 @@ def sample_document_nodes():
         )
     ]
     return splitter_nodes
+
+
+@pytest.fixture
+def sample_png_bytes():
+    image = Image.new("RGB", (64, 64), color=(120, 80, 200))
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+@pytest.fixture
+def sample_jpeg_bytes():
+    image = Image.new("RGB", (128, 128), color=(40, 120, 60))
+    buffer = io.BytesIO()
+    image.save(buffer, format="JPEG")
+    return buffer.getvalue()
+
+
+@pytest.fixture
+def corrupt_bytes():
+    return b"not-an-image-at-all"
+
+
+@pytest.fixture
+def mock_deepfake_model(mocker):
+    bundle = MagicMock()
+    bundle.version = "dima806/deepfake_vs_real_image_detection@test"
+    mocker.patch("scoring.detector.get_deepfake_model", return_value=bundle)
+    mocker.patch("scoring.detector.predict_authenticity_score", return_value=0.85)
+    mocker.patch("scoring.scorer.get_deepfake_model", return_value=bundle)
+    return bundle
+
+
+@pytest.fixture
+def authentic_reference_dir(tmp_path):
+    directory = tmp_path / "authentic"
+    directory.mkdir()
+    for idx, color in enumerate([(255, 0, 0), (0, 255, 0), (0, 0, 255)]):
+        image = Image.new("RGB", (32, 32), color=color)
+        image.save(directory / f"authentic_{idx}.png")
+    return directory

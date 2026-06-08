@@ -1,0 +1,28 @@
+from .artifacts import score_artifacts
+from .detector import load_detector
+from .metadata import score_metadata
+from .models import ScoringResult, SignalBreakdown
+from .preprocess import preprocess
+from .provenance import rebuild_provenance_index, score_provenance
+from .scorer import build_result
+from .visual import score_visual
+
+
+def load_scoring_pipeline() -> None:
+    rebuild_provenance_index()
+    load_detector()
+
+
+def score_image(
+    raw_bytes: bytes,
+    filename: str | None = None,
+    content_type: str | None = None,
+) -> ScoringResult:
+    preprocessed = preprocess(raw_bytes, filename=filename, content_type=content_type)
+    breakdown = SignalBreakdown(
+        m=score_metadata(preprocessed),
+        a=score_artifacts(preprocessed),
+        v=score_visual(preprocessed),
+        p=score_provenance(preprocessed),
+    )
+    return build_result(preprocessed.media_hash, breakdown)

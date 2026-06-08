@@ -1,21 +1,30 @@
+import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 
 from api.routes import analyze, issue, query
 from rag.pipeline import load_pipeline
+from scoring.pipeline import load_scoring_pipeline
 
+logger = logging.getLogger(__name__)
 
-load_dotenv()
-
-
+ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
+load_dotenv(ENV_PATH)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    index, _, _ = load_pipeline()
-    app.state.index = index
+    app.state.index = None
+    try:
+        index, _, _ = load_pipeline()
+        app.state.index = index
+    except Exception as exc:
+        logger.warning("RAG pipeline unavailable ( /query disabled ): %s", exc)
+
+    load_scoring_pipeline()
 
     yield
 

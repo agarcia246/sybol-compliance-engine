@@ -10,7 +10,7 @@
                 "tags": [
                     "scoring"
                 ],
-                "summary": "Analyze",
+                "summary": "Score media authenticity",
                 "operationId": "analyze_analyze_post",
                 "requestBody": {
                     "content": {
@@ -27,9 +27,14 @@
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "$ref": "#/components/schemas/AnalyzeResponse"
+                                }
                             }
                         }
+                    },
+                    "400": {
+                        "description": "Unsupported file type or corrupted file"
                     },
                     "422": {
                         "description": "Validation Error",
@@ -145,6 +150,39 @@
     },
     "components": {
         "schemas": {
+            "AnalyzeResponse": {
+                "properties": {
+                    "authenticity_score": {
+                        "type": "number",
+                        "maximum": 1.0,
+                        "minimum": 0.0,
+                        "title": "Authenticity Score"
+                    },
+                    "score_breakdown": {
+                        "items": {
+                            "type": "number"
+                        },
+                        "type": "array",
+                        "title": "Score Breakdown"
+                    },
+                    "compliance_status": {
+                        "type": "string",
+                        "title": "Compliance Status"
+                    },
+                    "media_hash": {
+                        "type": "string",
+                        "title": "Media Hash"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "authenticity_score",
+                    "score_breakdown",
+                    "compliance_status",
+                    "media_hash"
+                ],
+                "title": "AnalyzeResponse"
+            },
             "Body_analyze_analyze_post": {
                 "properties": {
                     "file": {
