@@ -1,18 +1,18 @@
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from llama_index.core import VectorStoreIndex
 
-from rag.models import ComplianceResult
-from rag.query import query_regulations
-from api.dependencies import get_index
+from src.api.dependencies import get_index
+from src.api.schemas import QueryResponse
 
-router = APIRouter()
-
-
-class QueryRequest(BaseModel):
-    query: str
-    regulation_type: str | None = None
+router = APIRouter(tags=["rag"])
 
 
-@router.post("", response_model=ComplianceResult)
-def query(req: QueryRequest, index=Depends(get_index)):
-    return query_regulations(req.query, index, req.regulation_type)
+@router.post("/query", response_model=QueryResponse)
+def query(payload: dict, index: VectorStoreIndex = Depends(get_index)) -> QueryResponse:
+    query_engine = index.as_query_engine(similarity_top_k=5)
+    result = query_engine.query(payload["question"])
+
+    return QueryResponse(
+        answer=str(result),
+        regulation_refs=[],
+    )

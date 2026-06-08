@@ -1,13 +1,33 @@
-from pydantic import BaseModel, Field
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ScoreBreakdown(BaseModel):
-    metadata: float = Field(..., alias="m")
-    artifact: float = Field(..., alias="a")
-    visual: float = Field(..., alias="v")
-    provenance: float = Field(..., alias="p")
+    model_config = ConfigDict(populate_by_name=True)
+
+    metadata: float = Field(..., ge=0.0, le=1.0, alias="m")
+    artifact: float = Field(..., ge=0.0, le=1.0, alias="a")
+    visual: float = Field(..., ge=0.0, le=1.0, alias="v")
+    provenance: float = Field(..., ge=0.0, le=1.0, alias="p")
+
+
 class AnalyzeResponse(BaseModel):
     authenticity_score: float = Field(..., ge=0.0, le=1.0)
-    score_breakdown: list[float]
-    compliance_status: str  # compliant | non-compliant | review
+    score_breakdown: ScoreBreakdown
+    compliance_status: Literal["compliant", "non-compliant", "review"]
     media_hash: str
+    model_version: str
+    analysis_timestamp: str
+    evidence_url: str | None = None
+
+
+class QueryResponse(BaseModel):
+    answer: str
+    regulation_refs: list[dict] = Field(default_factory=list)
+
+
+class IssueResponse(BaseModel):
+    status: str
+    vc_id: str | None = None
+    detail: str | None = None
