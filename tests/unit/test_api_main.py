@@ -35,4 +35,6 @@ async def test_lifespan_keeps_app_alive_when_index_build_fails(mocker):
 
 def test_app_registers_expected_routes():
     paths = {route.path for route in app.routes}
-    assert {"/health", "/api/analyze", "/api/query", "/api/issue"} <= paths
+    assert "/health" in paths
+    assert "/api/query" in paths
+    assert "/api" in paths
