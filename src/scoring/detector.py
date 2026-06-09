@@ -1,7 +1,7 @@
 from dataclasses import dataclass
+from typing import Any
 
 import torch
-from typing import Any
 from transformers import AutoImageProcessor, AutoModelForImageClassification
 
 from .constants import DEEPFAKE_MODEL_ID

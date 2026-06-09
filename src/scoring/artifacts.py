@@ -1,6 +1,7 @@
+from typing import cast
+
 import cv2
 import numpy as np
-from typing import cast
 
 from .constants import (
     ARTIFACT_CNN_WEIGHT,

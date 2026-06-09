@@ -1,21 +1,32 @@
-from functools import lru_cache
+import os
+from dataclasses import dataclass, field
 
 from fastapi import HTTPException, Request
 from llama_index.core import VectorStoreIndex
-import os
-from dataclasses import dataclass, field
 from qdrant_client import QdrantClient
 
 
 @dataclass
 class Settings:
     app_env: str = field(default_factory=lambda: os.getenv("APP_ENV", "dev"))
-    qdrant_url: str = field(default_factory=lambda: os.getenv("QDRANT_URL", "http://localhost:6333"))
-    qdrant_api_key: str | None = field(default_factory=lambda: os.getenv("QDRANT_API_KEY"))
-    qdrant_collection: str = field(default_factory=lambda: os.getenv("QDRANT_COLLECTION", "regulations"))
-    qdrant_audit_collection: str = field(default_factory=lambda: os.getenv("QDRANT_AUDIT_COLLECTION", "media_audit"))
-    sybol_api_key: str | None = field(default_factory=lambda: os.getenv("SYBOL_API_KEY"))
-    sybol_issuer_did: str | None = field(default_factory=lambda: os.getenv("SYBOL_ISSUER_DID"))
+    qdrant_url: str = field(
+        default_factory=lambda: os.getenv("QDRANT_URL", "http://localhost:6333")
+    )
+    qdrant_api_key: str | None = field(
+        default_factory=lambda: os.getenv("QDRANT_API_KEY")
+    )
+    qdrant_collection: str = field(
+        default_factory=lambda: os.getenv("QDRANT_COLLECTION", "regulations")
+    )
+    qdrant_audit_collection: str = field(
+        default_factory=lambda: os.getenv("QDRANT_AUDIT_COLLECTION", "media_audit")
+    )
+    sybol_api_key: str | None = field(
+        default_factory=lambda: os.getenv("SYBOL_API_KEY")
+    )
+    sybol_issuer_did: str | None = field(
+        default_factory=lambda: os.getenv("SYBOL_ISSUER_DID")
+    )
 
 
 def get_settings() -> Settings:

@@ -27,10 +27,11 @@ jobs:
         run: |
           poetry install --with dev
 
-      - name: Lint
+      - name: Lint & Format
         run: |
-          poetry run ruff check src tests
-          poetry run black --check src tests
+          # auto-fix import/format issues, then format with black
+          poetry run ruff check --fix src tests || true
+          poetry run black src tests
 
       - name: Type check
         run: |

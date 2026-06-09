@@ -1,12 +1,16 @@
 from llama_index.core import VectorStoreIndex
 
+from src.rag.embeder import get_embedding_model
 from src.rag.indexer import (
     build_index as indexer_build_index,
-    load_index as indexer_load_index,
+)
+from src.rag.indexer import (
     load_documents,
 )
+from src.rag.indexer import (
+    load_index as indexer_load_index,
+)
 from src.rag.ingest import chunk_documents
-from src.rag.embeder import get_embedding_model
 
 
 def build_index(documents: list | None = None) -> tuple[VectorStoreIndex, object]:

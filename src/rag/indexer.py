@@ -1,9 +1,8 @@
-from llama_index.core import Document, VectorStoreIndex, StorageContext
+from llama_index.core import Document, StorageContext, VectorStoreIndex
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 
 from src.api.dependencies import get_settings
-
 
 # Collection name constant used across the RAG indexer (default)
 COLLECTION_NAME = "regulations"
@@ -39,7 +38,9 @@ def load_index(embed_model) -> tuple[object, QdrantClient]:
     return index, client
 
 
-def build_index(nodes, embed_model, recreate_collection: bool = True) -> tuple[object, QdrantClient]:
+def build_index(
+    nodes, embed_model, recreate_collection: bool = True
+) -> tuple[object, QdrantClient]:
     client = get_qdrant_client()
     if recreate_collection:
         _delete_collection_if_exists(client)
