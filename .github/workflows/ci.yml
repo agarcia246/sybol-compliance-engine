@@ -34,7 +34,7 @@ jobs:
 
       - name: Type check
         run: |
-          poetry run mypy src
+          cd src && poetry run mypy .
 
       - name: Test
         run: |

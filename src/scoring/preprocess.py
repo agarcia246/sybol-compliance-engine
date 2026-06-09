@@ -56,10 +56,14 @@ def preprocess(
 
     detected = _detect_format(raw_bytes)
     if detected is None:
-        raise ScoringError("Unsupported or unrecognized image format", "unsupported_format")
+        raise ScoringError(
+            "Unsupported or unrecognized image format", "unsupported_format"
+        )
 
     if content_type and content_type not in SUPPORTED_MIME_TYPES:
-        raise ScoringError(f"Unsupported file type: {content_type}", "unsupported_format")
+        raise ScoringError(
+            f"Unsupported file type: {content_type}", "unsupported_format"
+        )
 
     media_hash = hashlib.sha256(raw_bytes).hexdigest()
     exif_tags = _extract_exif_tags(raw_bytes)

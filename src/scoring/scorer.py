@@ -23,12 +23,7 @@ def calibrate(raw_score: float) -> float:
 
 
 def compute_authenticity_score(breakdown: SignalBreakdown) -> float:
-    raw = (
-        WM * breakdown.m
-        + WA * breakdown.a
-        + WV * breakdown.v
-        + WP * breakdown.p
-    )
+    raw = WM * breakdown.m + WA * breakdown.a + WV * breakdown.v + WP * breakdown.p
     return _clamp(calibrate(raw))
 
 

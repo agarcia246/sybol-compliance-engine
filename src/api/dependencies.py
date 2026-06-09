@@ -1,25 +1,23 @@
 from functools import lru_cache
 
 from fastapi import HTTPException, Request
-
 from llama_index.core import VectorStoreIndex
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
+from dataclasses import dataclass, field
 from qdrant_client import QdrantClient
 
 
-class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+@dataclass
+class Settings:
+    app_env: str = field(default_factory=lambda: os.getenv("APP_ENV", "dev"))
+    qdrant_url: str = field(default_factory=lambda: os.getenv("QDRANT_URL", "http://localhost:6333"))
+    qdrant_api_key: str | None = field(default_factory=lambda: os.getenv("QDRANT_API_KEY"))
+    qdrant_collection: str = field(default_factory=lambda: os.getenv("QDRANT_COLLECTION", "regulations"))
+    qdrant_audit_collection: str = field(default_factory=lambda: os.getenv("QDRANT_AUDIT_COLLECTION", "media_audit"))
+    sybol_api_key: str | None = field(default_factory=lambda: os.getenv("SYBOL_API_KEY"))
+    sybol_issuer_did: str | None = field(default_factory=lambda: os.getenv("SYBOL_ISSUER_DID"))
 
-    app_env: str = "dev"
-    qdrant_url: str = "http://localhost:6333"
-    qdrant_api_key: str | None = None
-    qdrant_collection: str = "regulations"
-    qdrant_audit_collection: str = "media_audit"
-    sybol_api_key: str | None = None
-    sybol_issuer_did: str | None = None
 
-
-@lru_cache
 def get_settings() -> Settings:
     return Settings()
 
