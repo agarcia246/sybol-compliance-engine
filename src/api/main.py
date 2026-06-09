@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI
 
@@ -7,10 +8,16 @@ from src.api.routes.issue import router as issue_router
 from src.api.routes.query import router as query_router
 from src.rag.pipeline import build_index
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.index = build_index()
+    app.state.index = None
+    try:
+        app.state.index = build_index()
+    except Exception:
+        logger.exception("Failed to build index during startup")
     yield
 
 
