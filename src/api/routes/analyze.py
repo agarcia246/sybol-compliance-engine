@@ -2,9 +2,9 @@ from datetime import datetime
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from api.schemas import AnalyzeResponse
-from scoring.pipeline import score_image
-from scoring.preprocess import ScoringError
+from src.api.schemas import AnalyzeResponse
+from src.scoring.pipeline import score_image
+from src.scoring.preprocess import ScoringError
 
 router = APIRouter()
 

@@ -10,7 +10,7 @@ COLLECTION_NAME = "regulations"
 
 def get_qdrant_client() -> QdrantClient:
     settings = get_settings()
-    return QdrantClient(settings.qdrant_url, api_key=settings.qdrant_api_key)
+    return QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key)
 
 
 def _delete_collection_if_exists(client: QdrantClient) -> None:

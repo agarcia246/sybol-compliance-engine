@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     app.state.index = None
     try:
-        app.state.index = build_index()
+        index, _ = build_index()
+        app.state.index = index
     except Exception:
         logger.exception("Failed to build index during startup")
     yield

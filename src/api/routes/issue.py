@@ -1,6 +1,6 @@
 from fastapi import APIRouter, File, UploadFile
 
-from api.schemas import ScoreBreakdown
+from src.api.schemas import ScoreBreakdown
 
 router = APIRouter()
 
