@@ -37,4 +37,5 @@ def test_app_registers_expected_routes():
     paths = {route.path for route in app.routes}
     assert "/health" in paths
     assert "/api/query" in paths
-    assert "/api" in paths
+    assert "/api/analyze" in paths
+    assert "/api/issue" in paths
