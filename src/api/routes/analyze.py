@@ -10,7 +10,7 @@ router = APIRouter()
 
 
 @router.post(
-    "",
+    "/analyze",
     response_model=AnalyzeResponse,
     summary="Score media authenticity",
     responses={
