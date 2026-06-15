@@ -1,59 +1,62 @@
-import os
 import uuid
 from datetime import datetime, timezone
 
-
-from src.scoring.models import ScoringResult
 from src.rag.models import ComplianceResult
+from src.scoring.models import ScoringResult
 
-DEFAULT_ISSUER_DID = "did:web:sybol.ai"
-DEFAULT_SCHEMA_DID = "https://sybol.ai/schemas/media-compliance-credential/v1"
-
-
-def _issuer_did() -> str:
-    return os.getenv("SYBOL_ISSUER_DID") or DEFAULT_ISSUER_DID
+VC_CONTEXT = "https://www.w3.org/2018/credentials/v1"
 
 
-
-def build_vc_payload(result: ScoringResult, rag: ComplianceResult) -> dict:   
-
-    credential_id = f"urn:uuid:{uuid.uuid4()}"
-    valid_from = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+def _iso_timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-    return {
+def build_vc_payload(
+    result: ScoringResult,
+    rag: ComplianceResult,
+    *,
+    credential_id: str | None = None,
+    evidence_url: str | None = None,
+    expiration_date: str | None = None,
+) -> dict:
+    """
+    Build an unsigned W3C VC Data Model 1.1 payload for Sybol businessLogic API.
+
+    Issuer DID is resolved server-side from the authenticated tenant context;
+    it is not included in the request body.
+    """
+    if credential_id is None:
+        credential_id = f"urn:uuid:{uuid.uuid4()}"
+
+    issuance_date = _iso_timestamp()
+
+    payload: dict = {
+        "@context": [VC_CONTEXT],
         "id": credential_id,
         "type": ["VerifiableCredential", "MediaComplianceCredential"],
-        "issuer": _issuer_did(),
-        "validFrom": valid_from,
-        "credentialSchema": {
-            "id":DEFAULT_SCHEMA_DID,
-            "type": "JsonSchema",
-        },
+        "issuanceDate": issuance_date,
         "credentialSubject": {
             "id": f"urn:media:{result.media_hash}",
             "mediaHash": result.media_hash,
             "authenticityScore": result.authenticity_score,
             "scoreBreakdown": {
-                "m": result.score_breakdown.m, 
-                "a": result.score_breakdown.a, 
-                "v": result.score_breakdown.v, 
-                "p": result.score_breakdown.p, 
+                "m": result.score_breakdown.m,
+                "a": result.score_breakdown.a,
+                "v": result.score_breakdown.v,
+                "p": result.score_breakdown.p,
             },
             "complianceStatus": result.compliance_status.value,
             "modelVersion": result.model_version,
-            "analysisTimestamp": datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
-            "regulationRefs": [r.model_dump(by_alias=True) for r in rag.regulation_refs],
+            "analysisTimestamp": _iso_timestamp(),
+            "regulationRefs": [
+                {"regulation": r.regulation, "article": r.article, "url": r.source_url}
+                for r in rag.regulation_refs
+            ],
+            "evidenceUrl": evidence_url,
         },
-
-        # This is a stub and must be updated when SYB-51 is completed
-        "credentialStatus": {
-            "id": f"https://sybol.ai/status/{credential_id}#0",
-            "type": "StatusList2021Entry",
-            "statusPurpose": "revocation",
-            "statusListIndex": "0",
-            "statusListCredential": "https://sybol.ai/status/list/1"
-        }
     }
 
+    if expiration_date is not None:
+        payload["expirationDate"] = expiration_date
 
+    return payload

@@ -8,7 +8,9 @@ from src.api.dependencies import get_index
 
 def test_get_index_returns_existing_index():
     sentinel = object()
-    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(index=sentinel)))
+    request = SimpleNamespace(
+        app=SimpleNamespace(state=SimpleNamespace(index=sentinel))
+    )
 
     assert get_index(request) is sentinel
 

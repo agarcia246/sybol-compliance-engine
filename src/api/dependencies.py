@@ -21,11 +21,17 @@ class Settings:
     qdrant_audit_collection: str = field(
         default_factory=lambda: os.getenv("QDRANT_AUDIT_COLLECTION", "media_audit")
     )
-    sybol_api_key: str | None = field(
-        default_factory=lambda: os.getenv("SYBOL_API_KEY")
+    sybol_api_url: str | None = field(
+        default_factory=lambda: os.getenv("SYBOL_API_URL")
     )
-    sybol_issuer_did: str | None = field(
-        default_factory=lambda: os.getenv("SYBOL_ISSUER_DID")
+    sybol_access_token: str | None = field(
+        default_factory=lambda: os.getenv("SYBOL_ACCESS_TOKEN")
+    )
+    sybol_id_token: str | None = field(
+        default_factory=lambda: os.getenv("SYBOL_ID_TOKEN")
+    )
+    sybol_request_timeout: float = field(
+        default_factory=lambda: float(os.getenv("SYBOL_REQUEST_TIMEOUT", "10.0"))
     )
 
 
@@ -36,6 +42,18 @@ def get_settings() -> Settings:
 def get_qdrant_client(settings: Settings | None = None) -> QdrantClient:
     settings = settings or get_settings()
     return QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key)
+
+
+def get_sybol_client(settings: Settings | None = None):
+    from src.credentials.sybol_client import SybolClient
+
+    settings = settings or get_settings()
+    return SybolClient(
+        api_url=settings.sybol_api_url,
+        access_token=settings.sybol_access_token,
+        id_token=settings.sybol_id_token,
+        timeout=settings.sybol_request_timeout,
+    )
 
 
 def get_index(request: Request) -> VectorStoreIndex:

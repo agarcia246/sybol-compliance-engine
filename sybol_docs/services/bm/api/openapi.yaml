@@ -1,0 +1,1564 @@
+openapi: 3.0.3
+info:
+  title: BM Service — Blockchain Manager API
+  version: "0.2"
+  description: |
+    Internal EVM connector service for the Sybol platform.
+    Provides a unified, chain-agnostic HTTP API for transaction submission,
+    smart contract interaction, event log querying, and signer management
+    across EVM-compatible blockchains.
+
+    **Internal-only.** Not exposed to the internet.
+    All callers must present a valid internal service JWT.
+    Tenant context is derived from the `custom:tenant_id` JWT claim — never
+    passed as a path or query parameter.
+
+    Architecture decisions:
+    - ADR-001: ethers.js v6
+    - ADR-002: Hybrid RPC (self-hosted Geth/Nethermind primary + Alchemy/Infura fallback)
+    - ADR-003: AWS KMS ECC_SECG_P256K1 signing backend
+    - ADR-004: RDS PostgreSQL per-tenant DB + RDS Proxy + SELECT FOR UPDATE nonce locking
+    - ADR-005: Fire-and-track pattern + bm-event-poller Lambda on EventBridge Scheduler
+    - ADR-006: bm_contracts in global Sybol DB; write via backoffice, read via bm API
+  contact:
+    name: IGM
+
+servers:
+  - url: https://{internalHost}/api/bm
+    description: Internal VPC endpoint
+    variables:
+      internalHost:
+        default: internal.sybol.io
+        description: VPC-internal service hostname
+
+tags:
+  - name: Health
+    description: Service and chain connectivity health
+  - name: Chains
+    description: Tenant chain registry — query supported chains and their configurations
+  - name: Transactions
+    description: Transaction submission and status tracking (fire-and-track, ADR-005)
+  - name: Contracts
+    description: ABI resolution and smart contract read/write calls (ADR-006)
+  - name: Events
+    description: Historical event log queries
+  - name: Event Subscriptions
+    description: Manage bm-event-poller polling subscriptions (ADR-005)
+  - name: Signers
+    description: Signer public address resolution — no key material exposed (ADR-003)
+  - name: KPI
+    description: Tenant dashboard aggregated KPI metrics
+
+security:
+  - InternalServiceToken: []
+
+paths:
+  /api/bl/kpi:
+    get:
+      tags:
+        - KPI
+      summary: Obtener KPIs del tenant autenticado
+      description: Devuelve las métricas agregadas del tenant autenticado en un único objeto para el dashboard.
+      operationId: getKpi
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: KPIs obtenidos correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KpiResponse'
+              examples:
+                ok:
+                  value:
+                    vc: 123
+                    prp: 12
+                    contacts: 45
+                    signatures: 67
+        '401':
+          description: No autenticado
+        '403':
+          description: Sin permisos para acceder a este tenant
+        '500':
+          description: Error interno del servidor
+
+  # ---------------------------------------------------------------------------
+  # Health
+  # ---------------------------------------------------------------------------
+  /health:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Service health check
+      description: >
+        Returns service health and per-chain RPC connectivity status.
+        Unauthenticated — suitable for Lambda warm-up, ALB health checks,
+        and monitoring probes.
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: healthy
+                chains:
+                  - chainId: 137
+                    name: Polygon PoS
+                    rpcStatus: ok
+                    latestBlock: 60123456
+                timestamp: "2026-03-16T12:00:00Z"
+        "503":
+          description: Service degraded or unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  # ---------------------------------------------------------------------------
+  # Chains
+  # ---------------------------------------------------------------------------
+  /chains:
+    get:
+      tags: [Chains]
+      operationId: listChains
+      summary: List supported chains for the tenant
+      description: >
+        Returns all EVM chains registered and active for the calling tenant
+        (bm_chains table, tenant RDS — ADR-004).
+        Chains are seeded during tenant onboarding; not manageable via this API.
+        FR-01, FR-02.
+      responses:
+        "200":
+          description: List of registered chains
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChainListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /chains/{chainId}:
+    get:
+      tags: [Chains]
+      operationId: getChain
+      summary: Get chain configuration by chain ID
+      description: >
+        Returns full chain configuration including current RPC circuit-breaker
+        state (ADR-002). Validates that the requested chain is registered for
+        the calling tenant.
+        FR-01, FR-02, FR-03.
+      parameters:
+        - name: chainId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 137
+          description: EVM chain ID
+      responses:
+        "200":
+          description: Chain configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChainConfig"
+        "400":
+          description: Chain not in tenant registry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                error: CHAIN_NOT_SUPPORTED
+                message: "Chain ID 9999 is not registered for this tenant"
+                timestamp: "2026-03-16T12:00:00Z"
+                requestId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                path: "/api/bm/chains/9999"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ---------------------------------------------------------------------------
+  # Transactions
+  # ---------------------------------------------------------------------------
+  /transactions:
+    post:
+      tags: [Transactions]
+      operationId: submitTransaction
+      summary: Submit a transaction to a target chain
+      description: >
+        Fire-and-track pattern (ADR-005). The service:
+        1. Validates input and auth
+        2. Resolves chain config (ChainRegistry — ADR-004)
+        3. Estimates gas via eth_estimateGas unless gasLimit is provided (FR-12)
+        4. Applies EIP-1559 fee model if supported; falls back to legacy (FR-13, FR-14)
+        5. Allocates nonce via SELECT FOR UPDATE on bm_nonces (FR-11, ADR-004)
+        6. Signs via KMS ECC_SECG_P256K1 (ADR-003)
+        7. Broadcasts via RPCClient with hybrid failover (ADR-002)
+        8. Persists record to bm_transactions (ADR-004)
+        9. Returns 202 immediately with txHash
+
+
+        Callers MUST poll GET /transactions/{txHash}?chainId={chainId} for final
+        status, or consume EventBridge events from the bm-events bus (ADR-005).
+        FR-10, FR-11, FR-12, FR-13, FR-14, FR-15.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitTransactionRequest"
+            examples:
+              nativeTransfer:
+                summary: Native ETH/MATIC transfer
+                value:
+                  chainId: 11155111
+                  to: "0xAbCd1234AbCd1234AbCd1234AbCd1234AbCd1234"
+                  data: "0x"
+                  value: "1000000000000000000"
+              contractWrite:
+                summary: Contract write with calldata
+                value:
+                  chainId: 137
+                  to: "0xAbCd1234AbCd1234AbCd1234AbCd1234AbCd1234"
+                  data: "0xa9059cbb000000000000000000000000abcd1234abcd1234abcd1234abcd1234abcd12340000000000000000000000000000000000000000000000000de0b6b3a7640000"
+                  signerRef: "tenant-wallet-primary"
+      responses:
+        "202":
+          description: Transaction accepted and broadcast — fire-and-track
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionAcknowledgement"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/SignerNotFound"
+        "409":
+          $ref: "#/components/responses/NonceConflict"
+        "422":
+          $ref: "#/components/responses/InsufficientFunds"
+        "502":
+          $ref: "#/components/responses/RpcError"
+        "504":
+          $ref: "#/components/responses/RpcTimeout"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    get:
+      tags: [Transactions]
+      operationId: listTransactions
+      summary: List transactions for the tenant
+      description: >
+        Cursor-paginated list of transactions persisted in bm_transactions
+        (ADR-004), optionally filtered by chain, status, or signer.
+        FR-20, FR-22.
+      parameters:
+        - name: chainId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter by chain ID
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/TransactionStatus"
+          description: Filter by transaction status
+        - name: signerRef
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by signer reference
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque cursor from a previous response's pagination.nextCursor
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of results to return
+      responses:
+        "200":
+          description: Paginated list of transactions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionListResponse"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /transactions/{txHash}:
+    get:
+      tags: [Transactions]
+      operationId: getTransaction
+      summary: Get transaction status and receipt by hash
+      description: >
+        Returns current status, confirmation count, gas bump count (FR-23 stuck-tx
+        replacement), and full receipt once available.
+        chainId is required to disambiguate the same hash across chains.
+        FR-20, FR-21, FR-22, FR-23.
+      parameters:
+        - name: txHash
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^0x[a-fA-F0-9]{64}$"
+            example: "0xabc123def456abc123def456abc123def456abc123def456abc123def456abc1"
+          description: EVM transaction hash (0x-prefixed, 32 bytes / 64 hex chars)
+        - name: chainId
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 137
+          description: Chain ID — required to scope the lookup
+      responses:
+        "200":
+          description: Transaction status and receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionStatusResponse"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ---------------------------------------------------------------------------
+  # Contracts
+  #
+  # ROUTING NOTE: /contracts/call and /contracts/send are STATIC paths.
+  # /contracts/{contractRef}/{chainId} is PARAMETERIZED.
+  # The framework MUST register static routes before parameterized ones to
+  # prevent "call" and "send" from being captured as contractRef values.
+  # ---------------------------------------------------------------------------
+  /contracts/call:
+    post:
+      tags: [Contracts]
+      operationId: contractCall
+      summary: Execute a read-only eth_call on a registered contract
+      description: >
+        Executes a view/pure function via eth_call. No signing, no gas cost.
+        ABI is resolved from the global bm_contracts registry with in-memory cache
+        (CONTRACT_CACHE_TTL_SECONDS — ADR-006).
+        Result is decoded using ethers.js v6 ABI (ADR-001).
+        FR-30, FR-31.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContractCallRequest"
+            example:
+              chainId: 137
+              contractRef: "CredentialRegistry"
+              method: "isRevoked"
+              args: ["0xAbCd1234AbCd1234AbCd1234AbCd1234AbCd1234"]
+              blockTag: "latest"
+      responses:
+        "200":
+          description: Decoded return value and raw bytes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContractCallResponse"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/ContractNotFound"
+        "502":
+          $ref: "#/components/responses/RpcError"
+        "504":
+          $ref: "#/components/responses/RpcTimeout"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /contracts/send:
+    post:
+      tags: [Contracts]
+      operationId: contractSend
+      summary: Encode and submit a contract write call as a signed transaction
+      description: >
+        Encodes calldata from ABI + method + args using ethers.js v6 (ADR-001),
+        then delegates to the full transaction submission pipeline
+        (same as POST /transactions). Returns 202 Accepted with txHash — fire-and-track.
+        FR-30, FR-32.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContractSendRequest"
+            example:
+              chainId: 137
+              contractRef: "CredentialRegistry"
+              method: "issue"
+              args: ["0xAbCd1234AbCd1234AbCd1234AbCd1234AbCd1234", "0xdeadbeef"]
+              signerRef: "tenant-wallet-primary"
+      responses:
+        "202":
+          description: Transaction accepted and broadcast
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionAcknowledgement"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/ContractNotFound"
+        "409":
+          $ref: "#/components/responses/NonceConflict"
+        "422":
+          $ref: "#/components/responses/InsufficientFunds"
+        "502":
+          $ref: "#/components/responses/RpcError"
+        "504":
+          $ref: "#/components/responses/RpcTimeout"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /contracts/{contractRef}/{chainId}:
+    get:
+      tags: [Contracts]
+      operationId: getContract
+      summary: Resolve a registered contract ABI and deployment address
+      description: >
+        Returns ABI and deployment address from the global bm_contracts registry
+        (ADR-006). Results are cached in Lambda memory for CONTRACT_CACHE_TTL_SECONDS.
+        Read-only on this service — registration is owned by POST /api/bo/contracts
+        (backoffice service).
+        FR-30, FR-33.
+      parameters:
+        - name: contractRef
+          in: path
+          required: true
+          schema:
+            type: string
+            example: CredentialRegistry
+          description: Logical contract reference name
+        - name: chainId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 137
+          description: Target chain ID
+      responses:
+        "200":
+          description: Contract ABI and deployment metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContractInfo"
+        "400":
+          $ref: "#/components/responses/ChainNotSupported"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/ContractNotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ---------------------------------------------------------------------------
+  # Events
+  # ---------------------------------------------------------------------------
+  /events:
+    get:
+      tags: [Events]
+      operationId: queryEventLogs
+      summary: Query historical event logs for a contract
+      description: >
+        Returns decoded event logs for the given contract, event name, and block range.
+        Block range is bounded by the per-chain maxEventBlockRange config (§9.4).
+        Requests exceeding the max range receive 400 INVALID_REQUEST with
+        details.maxBlockRange populated.
+
+
+        Decoded args are raw — interpretation is the caller's responsibility (FR-42).
+        Use cursor pagination to page through large block ranges.
+
+
+        Consumers of EventBridge events (ADR-005) must deduplicate on txHash + logIndex
+        (at-least-once delivery).
+        FR-40, FR-42.
+      parameters:
+        - name: chainId
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: Target chain ID
+        - name: contractRef
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Registered contract reference
+        - name: event
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >
+            Event name to filter (e.g. Transfer). If omitted, all events emitted
+            by the contract within the block range are returned.
+        - name: fromBlock
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: Start block number (inclusive)
+        - name: toBlock
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: End block number (inclusive). Defaults to the latest resolved block.
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque cursor for paginating large result sets
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+          description: Maximum number of events to return per page
+      responses:
+        "200":
+          description: Decoded event log results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventLogListResponse"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/ContractNotFound"
+        "502":
+          $ref: "#/components/responses/RpcError"
+        "504":
+          $ref: "#/components/responses/RpcTimeout"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ---------------------------------------------------------------------------
+  # Event Subscriptions
+  # ---------------------------------------------------------------------------
+  /event-subscriptions:
+    get:
+      tags: [Event Subscriptions]
+      operationId: listEventSubscriptions
+      summary: List active event polling subscriptions for the tenant
+      description: >
+        Returns all bm-event-poller subscriptions from bm_event_subscriptions
+        (tenant RDS — ADR-005) for the calling tenant. Optionally filtered by chain.
+        FR-41, ADR-005.
+      parameters:
+        - name: chainId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter by chain ID
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: List of event subscriptions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventSubscriptionListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags: [Event Subscriptions]
+      operationId: createEventSubscription
+      summary: Create an event polling subscription
+      description: >
+        Registers a new subscription in bm_event_subscriptions (tenant RDS).
+        The bm-event-poller Lambda will begin polling from startBlock on its next
+        scheduled run (1-minute cadence — ADR-005).
+        Matching events are published to the bm-events EventBridge custom bus.
+        Consumers must deduplicate on txHash + logIndex (at-least-once delivery).
+        FR-41, ADR-005.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventSubscriptionRequest"
+            example:
+              chainId: 137
+              contractRef: "CredentialRegistry"
+              eventName: "CredentialIssued"
+              startBlock: 60000000
+      responses:
+        "201":
+          description: Subscription created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventSubscription"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/ContractNotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /event-subscriptions/{subscriptionId}:
+    get:
+      tags: [Event Subscriptions]
+      operationId: getEventSubscription
+      summary: Get a specific event subscription and its current cursor
+      parameters:
+        - $ref: "#/components/parameters/SubscriptionIdParam"
+      responses:
+        "200":
+          description: Event subscription detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventSubscription"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: [Event Subscriptions]
+      operationId: deleteEventSubscription
+      summary: Delete (deactivate) an event subscription
+      description: >
+        Removes the subscription from bm_event_subscriptions.
+        The bm-event-poller will stop publishing events for this subscription
+        on its next scheduled run.
+      parameters:
+        - $ref: "#/components/parameters/SubscriptionIdParam"
+      responses:
+        "204":
+          description: Subscription deleted — no content
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ---------------------------------------------------------------------------
+  # Signers
+  # ---------------------------------------------------------------------------
+  /signers:
+    get:
+      tags: [Signers]
+      operationId: listSigners
+      summary: List signer references available to the tenant
+      description: >
+        Returns all signers configured for the calling tenant.
+        No key material is ever exposed — only the checksummed EVM public address.
+        FR-52, FR-53, ADR-003.
+      responses:
+        "200":
+          description: List of signers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignerListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /signers/{signerRef}:
+    get:
+      tags: [Signers]
+      operationId: getSigner
+      summary: Get public address for a signer reference
+      description: >
+        Returns the checksummed EIP-55 EVM address for the given logical signer
+        reference. Private key material, KMS key ARN, and DER-encoded bytes are
+        NEVER returned (FR-51, ADR-003).
+        FR-53.
+      parameters:
+        - name: signerRef
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Logical signer reference (tenant-scoped)
+      responses:
+        "200":
+          description: Signer public address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignerInfo"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/SignerNotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+# =============================================================================
+# Components
+# =============================================================================
+components:
+
+  securitySchemes:
+    InternalServiceToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Internal service JWT. Tenant context is extracted from the
+        `custom:tenant_id` claim. Auth mechanism subject to pending ADR (§9.1).
+        Tenant ID must NEVER be passed as a path or query parameter.
+
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    SubscriptionIdParam:
+      name: subscriptionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Event subscription UUID
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid internal service token (401)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: UNAUTHORIZED
+            message: "Missing or invalid service token"
+            timestamp: "2026-03-16T12:00:00Z"
+            requestId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            path: "/api/bm/transactions"
+
+    InvalidRequest:
+      description: Malformed input or failed validation (400)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: INVALID_REQUEST
+            message: "Field validation failed"
+            details:
+              to: "Must be a valid EIP-55 checksummed address"
+            timestamp: "2026-03-16T12:00:00Z"
+            requestId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            path: "/api/bm/transactions"
+
+    ChainNotSupported:
+      description: Requested chainId not in tenant registry (400)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: CHAIN_NOT_SUPPORTED
+            message: "Chain ID 9999 is not registered for this tenant"
+            timestamp: "2026-03-16T12:00:00Z"
+            requestId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            path: "/api/bm/chains/9999"
+
+    SignerNotFound:
+      description: signerRef does not exist for this tenant (404)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: SIGNER_NOT_FOUND
+            message: "Signer 'unknown-ref' not found for this tenant"
+            timestamp: "2026-03-16T12:00:00Z"
+            requestId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            path: "/api/bm/signers/unknown-ref"
+
+    ContractNotFound:
+      description: contractRef not found in global registry (404)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: CONTRACT_NOT_FOUND
+            message: "Contract 'UnknownContract' not found for chain 137"
+            timestamp: "2026-03-16T12:00:00Z"
+            requestId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            path: "/api/bm/contracts/call"
+
+    NotFound:
+      description: Resource not found (404)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    NonceConflict:
+      description: Nonce allocation conflict — concurrent Lambda race (409)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: NONCE_CONFLICT
+            message: "Nonce allocation conflict for signer on chain 137"
+            timestamp: "2026-03-16T12:00:00Z"
+            requestId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            path: "/api/bm/transactions"
+
+    InsufficientFunds:
+      description: Signer wallet has insufficient balance (422)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: INSUFFICIENT_FUNDS
+            message: "Signer balance insufficient to cover gas cost and value"
+            timestamp: "2026-03-16T12:00:00Z"
+            requestId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            path: "/api/bm/transactions"
+
+    TxReverted:
+      description: Transaction submitted but reverted on-chain (422)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: TX_REVERTED
+            message: "Transaction reverted during on-chain execution"
+            timestamp: "2026-03-16T12:00:00Z"
+            requestId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            path: "/api/bm/transactions"
+
+    RpcError:
+      description: Upstream RPC provider returned an error after retries (502)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: RPC_ERROR
+            message: "Upstream RPC returned an error after 3 retries on primary and fallback"
+            timestamp: "2026-03-16T12:00:00Z"
+            requestId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            path: "/api/bm/transactions"
+
+    RpcTimeout:
+      description: Upstream RPC did not respond within RPC_TIMEOUT_MS (504)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: RPC_TIMEOUT
+            message: "Upstream RPC timed out after 5000ms"
+            timestamp: "2026-03-16T12:00:00Z"
+            requestId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            path: "/api/bm/transactions"
+
+    InternalError:
+      description: Unexpected internal error (500)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: INTERNAL_ERROR
+            message: "An unexpected error occurred"
+            timestamp: "2026-03-16T12:00:00Z"
+            requestId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            path: "/api/bm/transactions"
+
+  schemas:
+    # -------------------------------------------------------------------------
+    # KPI shape — for internal monitoring and tenant dashboards
+    # -------------------------------------------------------------------------
+
+    KpiResponse:
+      type: object
+      required:
+        - vc
+        - prp
+        - contacts
+        - signatures
+      properties:
+        vc:
+          type: integer
+          format: int32
+          description: Número de credenciales verificables emitidas
+          example: 123
+        prp:
+          type: integer
+          format: int32
+          description: Número de Presentation Requests pendientes
+          example: 12
+        contacts:
+          type: integer
+          format: int32
+          description: Número de contactos activos/aceptados del tenant
+          example: 45
+        signatures:
+          type: integer
+          format: int32
+          description: Número de presentaciones emitidas más documentos firmados
+          example: 67
+
+
+
+    # -------------------------------------------------------------------------
+    # Error shape — Sybol platform standard
+    # -------------------------------------------------------------------------
+    ErrorResponse:
+      type: object
+      required: [success, error, message, timestamp, requestId, path]
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
+          description: SCREAMING_SNAKE_CASE error code per §10.1 taxonomy
+          example: INVALID_REQUEST
+        message:
+          type: string
+          description: Human-readable description for logging and debugging
+        details:
+          type: object
+          additionalProperties: true
+          description: >
+            Optional field-level validation context.
+            Example: { "to": "Invalid EIP-55 checksum" }
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the error
+        requestId:
+          type: string
+          format: uuid
+          description: X-Ray trace propagation ID
+        path:
+          type: string
+          description: Request path that produced the error
+
+    # -------------------------------------------------------------------------
+    # Health
+    # -------------------------------------------------------------------------
+    HealthResponse:
+      type: object
+      required: [status, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        chains:
+          type: array
+          items:
+            type: object
+            required: [chainId, name, rpcStatus, latestBlock]
+            properties:
+              chainId:
+                type: integer
+              name:
+                type: string
+              rpcStatus:
+                type: string
+                enum: [ok, degraded, down]
+              latestBlock:
+                type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+    # -------------------------------------------------------------------------
+    # Chains
+    # -------------------------------------------------------------------------
+    NativeCurrency:
+      type: object
+      required: [symbol, decimals]
+      properties:
+        symbol:
+          type: string
+          example: MATIC
+        decimals:
+          type: integer
+          example: 18
+
+    ChainConfig:
+      type: object
+      required:
+        - chainId
+        - name
+        - nativeCurrency
+        - eip1559
+        - confirmationBlocks
+        - rpcStatus
+      properties:
+        chainId:
+          type: integer
+          example: 137
+        name:
+          type: string
+          example: Polygon PoS
+        nativeCurrency:
+          $ref: "#/components/schemas/NativeCurrency"
+        eip1559:
+          type: boolean
+          description: >
+            Whether this chain supports the EIP-1559 fee model (FR-13).
+            When false, legacy gasPrice is used (FR-14).
+        confirmationBlocks:
+          type: integer
+          example: 2
+          description: Confirmation threshold for this chain (FR-21, bm_chains per-row override)
+        blockTimeMs:
+          type: integer
+          example: 2000
+          description: Approximate block time in milliseconds
+        explorerUrl:
+          type: string
+          format: uri
+          example: "https://polygonscan.com"
+        rpcStatus:
+          type: string
+          enum: [primary, fallback, unavailable]
+          description: >
+            Current RPC routing state per ADR-002 circuit-breaker logic.
+            primary = self-hosted Geth/Nethermind is active;
+            fallback = Alchemy/Infura is active;
+            unavailable = both circuit-breakers are open.
+
+    ChainListResponse:
+      type: object
+      required: [chains]
+      properties:
+        chains:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChainConfig"
+
+    # -------------------------------------------------------------------------
+    # Transactions
+    # -------------------------------------------------------------------------
+    SubmitTransactionRequest:
+      type: object
+      required: [chainId, to, data]
+      properties:
+        chainId:
+          type: integer
+          description: Target EVM chain ID
+          example: 137
+        to:
+          type: string
+          pattern: "^0x[a-fA-F0-9]{40}$"
+          description: >
+            Checksummed EIP-55 recipient address (contract or EOA).
+            Validated before signing (§9.4).
+          example: "0xAbCd1234AbCd1234AbCd1234AbCd1234AbCd1234"
+        data:
+          type: string
+          pattern: "^0x[a-fA-F0-9]*$"
+          description: >
+            0x-prefixed hex-encoded calldata.
+            Use "0x" for a plain native token transfer.
+          example: "0xa9059cbb0000..."
+        value:
+          type: string
+          pattern: "^[0-9]+$"
+          description: >
+            Native token value to transfer, in wei, as a decimal string.
+            String type avoids JavaScript integer overflow for large amounts.
+          example: "1000000000000000000"
+        gasLimit:
+          type: string
+          pattern: "^[0-9]+$"
+          description: >
+            Gas limit as decimal string.
+            If omitted, the service estimates gas via eth_estimateGas (FR-12).
+          example: "200000"
+        signerRef:
+          type: string
+          description: >
+            Logical signer reference (tenant-scoped).
+            If omitted, the tenant's default configured signer is used.
+          example: "tenant-wallet-primary"
+        nonce:
+          type: integer
+          minimum: 0
+          description: >
+            Manual nonce override. USE WITH CAUTION — misuse causes stuck transactions.
+            If omitted, nonce is allocated by NonceManager via SELECT FOR UPDATE (FR-11, ADR-004).
+          example: 42
+
+    TransactionAcknowledgement:
+      type: object
+      required: [txHash, chainId, status, submittedAt]
+      properties:
+        txHash:
+          type: string
+          pattern: "^0x[a-fA-F0-9]{64}$"
+          description: >
+            EVM transaction hash. Use to poll GET /transactions/{txHash}?chainId={chainId}
+            for final status.
+        chainId:
+          type: integer
+        status:
+          type: string
+          enum: [pending]
+          description: Always "pending" on 202 response (fire-and-track pattern — ADR-005)
+        submittedAt:
+          type: string
+          format: date-time
+
+    TransactionStatus:
+      type: string
+      enum: [pending, confirmed, failed, replaced]
+      description: >
+        pending   = broadcast, awaiting mining;
+        confirmed = mined with ≥ confirmationBlocks confirmations;
+        failed    = reverted on-chain OR max gas bump attempts (2) exhausted (FR-23);
+        replaced  = superseded by a higher-gas replacement tx (FR-23 stuck-tx policy)
+
+    TransactionStatusResponse:
+      type: object
+      required: [txHash, chainId, status, confirmations, gasBumpCount, submittedAt]
+      properties:
+        txHash:
+          type: string
+          pattern: "^0x[a-fA-F0-9]{64}$"
+        chainId:
+          type: integer
+        status:
+          $ref: "#/components/schemas/TransactionStatus"
+        confirmations:
+          type: integer
+          minimum: 0
+          description: Current confirmation count relative to latest known block
+        gasBumpCount:
+          type: integer
+          minimum: 0
+          maximum: 2
+          description: >
+            Number of stuck-tx gas bump attempts performed so far.
+            Max 2 per FR-23 policy (gasPrice × 1.15 per bump, after TX_STUCK_TIMEOUT_BLOCKS).
+            Mapped from bm_transactions.gas_bump_count (ADR-004).
+        submittedAt:
+          type: string
+          format: date-time
+        confirmedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Null while status is "pending"
+        receipt:
+          nullable: true
+          description: Null while status is "pending"
+          allOf:
+            - $ref: "#/components/schemas/TransactionReceipt"
+
+    TransactionReceipt:
+      type: object
+      required: [blockNumber, blockHash, gasUsed, effectiveGasPrice, status, logs]
+      properties:
+        blockNumber:
+          type: integer
+          description: Block in which this transaction was mined
+        blockHash:
+          type: string
+          pattern: "^0x[a-fA-F0-9]{64}$"
+        gasUsed:
+          type: string
+          description: Actual gas used, as decimal string
+          example: "85000"
+        effectiveGasPrice:
+          type: string
+          description: Effective gas price in wei, as decimal string
+          example: "30000000000"
+        status:
+          type: integer
+          enum: [0, 1]
+          description: "1 = success; 0 = reverted on-chain"
+        logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/RawLog"
+
+    RawLog:
+      type: object
+      required: [address, topics, data, logIndex, transactionHash, blockNumber]
+      properties:
+        address:
+          type: string
+          pattern: "^0x[a-fA-F0-9]{40}$"
+          description: Checksummed EIP-55 address of the emitting contract
+        topics:
+          type: array
+          items:
+            type: string
+            pattern: "^0x[a-fA-F0-9]{64}$"
+          description: Keccak256 event signature hash + indexed parameter values
+        data:
+          type: string
+          description: 0x-prefixed hex ABI-encoded non-indexed log data
+        logIndex:
+          type: integer
+          description: Log index within the block
+        transactionHash:
+          type: string
+          pattern: "^0x[a-fA-F0-9]{64}$"
+        blockNumber:
+          type: integer
+
+    TransactionListResponse:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransactionStatusResponse"
+        pagination:
+          $ref: "#/components/schemas/CursorPagination"
+
+    # -------------------------------------------------------------------------
+    # Contracts
+    # -------------------------------------------------------------------------
+    ContractInfo:
+      type: object
+      required: [contractRef, chainId, address, abiVersion, abi]
+      properties:
+        contractRef:
+          type: string
+          example: CredentialRegistry
+        chainId:
+          type: integer
+          example: 137
+        address:
+          type: string
+          pattern: "^0x[a-fA-F0-9]{40}$"
+          description: Checksummed deployment address of the contract
+        abiVersion:
+          type: string
+          example: "1.0.0"
+        abi:
+          type: array
+          description: ethers.js v6 compatible ABI fragment array (ADR-001)
+          items:
+            type: object
+            additionalProperties: true
+
+    ContractCallRequest:
+      type: object
+      required: [chainId, contractRef, method, args]
+      properties:
+        chainId:
+          type: integer
+          example: 137
+        contractRef:
+          type: string
+          example: CredentialRegistry
+        method:
+          type: string
+          description: Contract function name as declared in the registered ABI
+          example: balanceOf
+        args:
+          type: array
+          items: {}
+          description: >
+            Function arguments typed per the ABI signature.
+            Pass an empty array [] for functions with no parameters.
+        blockTag:
+          type: string
+          description: >
+            Block context for the call.
+            Accepts "latest", "pending", or a decimal block number as a string.
+          default: latest
+          example: latest
+
+    ContractCallResponse:
+      type: object
+      required: [result, raw]
+      properties:
+        result:
+          description: >
+            Decoded return value. Type corresponds to the ABI return type
+            (e.g. string, boolean, BigInt for uint256).
+        raw:
+          type: string
+          description: 0x-prefixed hex-encoded raw return bytes from eth_call
+
+    ContractSendRequest:
+      type: object
+      required: [chainId, contractRef, method, args]
+      properties:
+        chainId:
+          type: integer
+          example: 137
+        contractRef:
+          type: string
+          example: CredentialRegistry
+        method:
+          type: string
+          description: Contract write function name per registered ABI
+          example: issue
+        args:
+          type: array
+          items: {}
+          description: Function arguments typed per the ABI signature
+        value:
+          type: string
+          pattern: "^[0-9]+$"
+          description: Native token value in wei as decimal string (for payable functions)
+        signerRef:
+          type: string
+          description: Signer reference. Defaults to the tenant's default signer.
+
+    # -------------------------------------------------------------------------
+    # Events
+    # -------------------------------------------------------------------------
+    DecodedEvent:
+      type: object
+      required: [blockNumber, txHash, logIndex, event, args]
+      properties:
+        blockNumber:
+          type: integer
+        txHash:
+          type: string
+          pattern: "^0x[a-fA-F0-9]{64}$"
+        logIndex:
+          type: integer
+          description: >
+            Used for deduplication on txHash + logIndex (at-least-once delivery — ADR-005).
+        event:
+          type: string
+          description: Event name per registered ABI
+          example: Transfer
+        args:
+          type: object
+          additionalProperties: true
+          description: >
+            Decoded event arguments keyed by parameter name (per ABI).
+            Interpretation is the caller's responsibility (FR-42).
+
+    EventLogListResponse:
+      type: object
+      required: [events, pagination]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/DecodedEvent"
+        pagination:
+          $ref: "#/components/schemas/CursorPagination"
+
+    # -------------------------------------------------------------------------
+    # Event Subscriptions
+    # -------------------------------------------------------------------------
+    CreateEventSubscriptionRequest:
+      type: object
+      required: [chainId, contractRef, startBlock]
+      properties:
+        chainId:
+          type: integer
+          description: Chain to poll on
+          example: 137
+        contractRef:
+          type: string
+          description: Registered contract reference to watch
+          example: CredentialRegistry
+        eventName:
+          type: string
+          description: >
+            Specific event to subscribe to.
+            If omitted, all events emitted by the contract are captured.
+          example: CredentialIssued
+        startBlock:
+          type: integer
+          description: Block number from which polling begins (inclusive)
+          example: 60000000
+
+    EventSubscription:
+      type: object
+      required:
+        - subscriptionId
+        - chainId
+        - contractRef
+        - startBlock
+        - cursorBlock
+        - status
+        - createdAt
+      properties:
+        subscriptionId:
+          type: string
+          format: uuid
+          description: Unique subscription identifier
+        chainId:
+          type: integer
+        contractRef:
+          type: string
+        eventName:
+          type: string
+          nullable: true
+          description: Specific event watched; null means all contract events
+        startBlock:
+          type: integer
+        cursorBlock:
+          type: integer
+          description: Last block successfully processed by bm-event-poller (ADR-005)
+        status:
+          type: string
+          enum: [active, paused, error]
+        createdAt:
+          type: string
+          format: date-time
+
+    EventSubscriptionListResponse:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventSubscription"
+        pagination:
+          $ref: "#/components/schemas/CursorPagination"
+
+    # -------------------------------------------------------------------------
+    # Signers
+    # -------------------------------------------------------------------------
+    SignerInfo:
+      type: object
+      required: [signerRef, address, chainIds]
+      properties:
+        signerRef:
+          type: string
+          description: Logical signer reference (tenant-scoped)
+          example: tenant-wallet-primary
+        address:
+          type: string
+          pattern: "^0x[a-fA-F0-9]{40}$"
+          description: >
+            Checksummed EIP-55 EVM public address.
+            This is the ONLY key-material-derived field exposed by this API.
+            Private keys, KMS key ARNs, and DER-encoded bytes are NEVER returned
+            (FR-51, ADR-003).
+          example: "0xAbCd1234AbCd1234AbCd1234AbCd1234AbCd1234"
+        chainIds:
+          type: array
+          items:
+            type: integer
+          description: Chain IDs this signer is configured and active on
+
+    SignerListResponse:
+      type: object
+      required: [signers]
+      properties:
+        signers:
+          type: array
+          items:
+            $ref: "#/components/schemas/SignerInfo"
+
+    # -------------------------------------------------------------------------
+    # Pagination — shared across all list endpoints
+    # -------------------------------------------------------------------------
+    CursorPagination:
+      type: object
+      required: [hasMore]
+      properties:
+        hasMore:
+          type: boolean
+          description: Whether more results exist beyond this page
+        nextCursor:
+          type: string
+          nullable: true
+          description: >
+            Opaque base64-encoded cursor for the next page.
+            Pass as the "cursor" query parameter on the next request.
+            Null when hasMore is false. Callers must not parse or construct it.
+        limit:
+          type: integer
+          description: Page size used for this response

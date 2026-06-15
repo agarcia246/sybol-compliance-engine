@@ -31,3 +31,6 @@ class IssueResponse(BaseModel):
     status: str
     vc_id: str | None = None
     detail: str | None = None
+    signed: bool = False
+    vc_payload: dict | None = None
+    signed_vc: dict | None = None
