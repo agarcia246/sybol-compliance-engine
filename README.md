@@ -62,7 +62,21 @@ cp src/.env.example src/.env
 | `QDRANT_API_KEY` | `/query` | Qdrant API key (optional for local Qdrant) |
 | `SYBOL_*` | `/issue` | Sybol VC signing — pending Darius/Iñigo confirmation |
 
-Scoring via `/analyze` does not require Qdrant or Mistral. If Qdrant is unavailable at startup, `/analyze` still works but `/query` returns 503 until Qdrant is running.
+Scoring via `/analyze` does not require Qdrant or Mistral. If Qdrant is unavailable at startup, `/analyze` still works but `/query` returns 503 until Qdrant is running and the regulations index has been ingested.
+
+### Ingest regulation PDFs (one-time, before `/query` works)
+
+Place the five regulation PDFs in `research/regulations/` (see `research/regulations/README_Maxim.md`), start Qdrant, then run:
+
+```bash
+docker run -p 6333:6333 qdrant/qdrant
+```
+
+```bash
+PYTHONPATH=src poetry run python -m scripts.ingest
+```
+
+This chunks PDFs, embeds locally, and writes vectors to the `regulations` Qdrant collection. On API startup, the server calls `load_index()` to attach to that collection — it does not re-ingest automatically.
 
 ## Running the API
 
@@ -103,7 +117,7 @@ curl http://localhost:8000/health
 | `/health` | GET | Live | Service health check |
 | `/analyze` | POST | Live | Score media authenticity (four signals → compliance status) |
 | `/query` | POST | Live | Query RAG pipeline for regulation citations |
-| `/issue` | POST | Stub | VC issuance — not yet implemented |
+| `/issue` | POST | Live (503 until Sybol configured) | Score media → RAG citations → audit trail → submit to Sybol `businessLogic` API → return signed W3C VC 1.1. Returns 503 until `SYBOL_API_URL`, `SYBOL_ACCESS_TOKEN`, and `SYBOL_ID_TOKEN` are set. |
 
 Interactive docs: `http://localhost:8000/docs`
 

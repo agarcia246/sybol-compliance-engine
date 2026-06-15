@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
-from rag.query import query_regulations
+from rag.query import _validate_refs, query_regulations
+from src.rag.models import RegulationRef
 
 
 def test_query_regulations_returns_compliance_result(
@@ -34,7 +35,7 @@ def test_query_regulations_with_regulation_type_filter(
     assert call_kwargs["filters"] is not None
 
 
-def test_query_regulations_handles_missing_metadata(mock_mistral, env_vars, mocker):
+def test_query_regulations_drops_unknown_metadata(mock_mistral, env_vars, mocker):
     index = MagicMock()
     node = MagicMock()
     node.node.metadata = {}
@@ -43,6 +44,31 @@ def test_query_regulations_handles_missing_metadata(mock_mistral, env_vars, mock
 
     result = query_regulations(query="test query", index=index)
 
-    assert result.regulation_refs[0].regulation == "Unknown"
-    assert result.regulation_refs[0].article == "Unknown"
-    assert result.regulation_refs[0].source_url == ""
+    assert result.regulation_refs == []
+
+
+def test_validate_refs_drops_unknown_regulation_or_article():
+    refs = [
+        RegulationRef(
+            regulation="Unknown",
+            article="5",
+            sourceUrl="https://example.com",
+            excerpt="x",
+        ),
+        RegulationRef(
+            regulation="GDPR",
+            article="Unknown",
+            sourceUrl="https://example.com",
+            excerpt="y",
+        ),
+        RegulationRef(
+            regulation="GDPR",
+            article="5",
+            sourceUrl="https://example.com",
+            excerpt="z",
+        ),
+    ]
+    valid = _validate_refs(refs)
+    assert len(valid) == 1
+    assert valid[0].regulation == "GDPR"
+    assert valid[0].article == "5"

@@ -1,34 +1,42 @@
-from dotenv import load_dotenv
+from llama_index.core import VectorStoreIndex
 
-load_dotenv()
+from src.rag.embeder import get_embedding_model
+from src.rag.indexer import (
+    build_index as indexer_build_index,
+)
+from src.rag.indexer import (
+    load_index as indexer_load_index,
+)
+from src.rag.ingest import chunk_documents, load_documents
 
-from .embeder import get_embedding_model
-from .indexer import build_index, load_index
-from .ingest import REGULATIONS_DIR, chunk_documents, load_documents
-from .query import query_regulations
 
-
-def ingest_and_index(recreate_collection: bool = True):
-    docs = load_documents()
-    if not docs:
-        raise FileNotFoundError(
-            f"No regulation PDFs found in {REGULATIONS_DIR}. "
-            "Add PDFs to research/regulations/ before indexing."
-        )
-    nodes = chunk_documents(docs)
+def build_index(documents: list | None = None) -> tuple[VectorStoreIndex, object]:
+    docs = documents if documents is not None else load_documents()
     embed_model = get_embedding_model()
-    index, client = build_index(
-        nodes, embed_model, recreate_collection=recreate_collection
-    )
-    return index, embed_model, client
+    return indexer_build_index(docs, embed_model)
+
+
+def load_index() -> tuple[VectorStoreIndex, object]:
+    embed_model = get_embedding_model()
+    return indexer_load_index(embed_model)
 
 
 def load_pipeline():
+    index, client = load_index()
     embed_model = get_embedding_model()
-    index, client = load_index(embed_model)
+    return index, embed_model, client
+
+
+def ingest_and_index():
+    documents = load_documents()
+    if not documents:
+        raise FileNotFoundError("No regulation PDFs found")
+
+    nodes = chunk_documents(documents)
+    index, client = build_index(nodes)
+    embed_model = get_embedding_model()
     return index, embed_model, client
 
 
 def build_pipeline():
-    """Ingest PDFs and build the Qdrant index. Use for one-off indexing."""
     return ingest_and_index()

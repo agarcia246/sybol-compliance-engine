@@ -18,6 +18,7 @@ node_modules/
 *.index
 
 # Secrets
+.env
 .env*
 !.env.example
 

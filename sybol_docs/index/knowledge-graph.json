@@ -1,0 +1,1215 @@
+{
+  "metadata": {
+    "generated": "2026-03-10",
+    "version": "1.0",
+    "description": "Machine-readable knowledge graph of Sybol documentation structure",
+    "totalNodes": 140,
+    "totalEdges": 234,
+    "graphType": "directed"
+  },
+  "nodes": [
+    {
+      "id": "doc:README",
+      "type": "document",
+      "category": "entry-point",
+      "path": "docs/README.md",
+      "title": "Sybol Documentation",
+      "importance": "critical",
+      "targetAudience": ["all"]
+    },
+    {
+      "id": "doc:project-overview",
+      "type": "document",
+      "category": "overview",
+      "path": "docs/overview/project-overview.md",
+      "title": "Project Overview",
+      "importance": "critical",
+      "targetAudience": ["all", "stakeholders"]
+    },
+    {
+      "id": "doc:key-concepts",
+      "type": "document",
+      "category": "overview",
+      "path": "docs/overview/key-concepts.md",
+      "title": "Key Concepts",
+      "importance": "critical",
+      "targetAudience": ["developers", "architects", "product-team"]
+    },
+    {
+      "id": "doc:glossary",
+      "type": "document",
+      "category": "overview",
+      "path": "docs/overview/glossary.md",
+      "title": "Glossary",
+      "importance": "medium",
+      "targetAudience": ["all"]
+    },
+    {
+      "id": "doc:system-overview",
+      "type": "document",
+      "category": "architecture",
+      "path": "docs/architecture/system-overview.md",
+      "title": "System Overview",
+      "importance": "critical",
+      "targetAudience": ["architects", "technical-leads"]
+    },
+    {
+      "id": "doc:component-architecture",
+      "type": "document",
+      "category": "architecture",
+      "path": "docs/architecture/component-architecture.md",
+      "title": "Component Architecture",
+      "importance": "high",
+      "targetAudience": ["developers", "architects"]
+    },
+    {
+      "id": "doc:data-architecture",
+      "type": "document",
+      "category": "architecture",
+      "path": "docs/architecture/data-architecture.md",
+      "title": "Data Architecture",
+      "importance": "high",
+      "targetAudience": ["architects", "dba", "backend-developers"]
+    },
+    {
+      "id": "doc:security-architecture",
+      "type": "document",
+      "category": "architecture",
+      "path": "docs/architecture/security-architecture.md",
+      "title": "Security Architecture",
+      "importance": "high",
+      "targetAudience": ["architects", "security-team"]
+    },
+    {
+      "id": "doc:multi-tenancy",
+      "type": "document",
+      "category": "architecture",
+      "path": "docs/architecture/multi-tenancy.md",
+      "title": "Multi-Tenancy Architecture",
+      "importance": "high",
+      "targetAudience": ["architects", "backend-developers"]
+    },
+    {
+      "id": "doc:integration-architecture",
+      "type": "document",
+      "category": "architecture",
+      "path": "docs/architecture/integration-architecture.md",
+      "title": "Integration Architecture",
+      "importance": "medium",
+      "targetAudience": ["architects", "integration-developers"]
+    },
+    {
+      "id": "doc:deployment-architecture",
+      "type": "document",
+      "category": "architecture",
+      "path": "docs/architecture/deployment-architecture.md",
+      "title": "Deployment Architecture",
+      "importance": "high",
+      "targetAudience": ["architects", "devops"]
+    },
+    {
+      "id": "adr:0001",
+      "type": "adr",
+      "category": "decision",
+      "path": "docs/decisions/0001-aws-cognito-authentication.md",
+      "title": "ADR-0001: AWS Cognito Authentication",
+      "status": "accepted",
+      "importance": "critical",
+      "targetAudience": ["architects", "security-team"]
+    },
+    {
+      "id": "adr:0002",
+      "type": "adr",
+      "category": "decision",
+      "path": "docs/decisions/0002-serverless-architecture.md",
+      "title": "ADR-0002: Serverless Architecture",
+      "status": "accepted",
+      "importance": "critical",
+      "targetAudience": ["architects", "devops"]
+    },
+    {
+      "id": "adr:0003",
+      "type": "adr",
+      "category": "decision",
+      "path": "docs/decisions/0003-multi-tenant-database-design.md",
+      "title": "ADR-0003: Database-Per-Tenant Design",
+      "status": "accepted",
+      "importance": "critical",
+      "targetAudience": ["architects", "dba", "compliance"]
+    },
+    {
+      "id": "adr:0004",
+      "type": "adr",
+      "category": "decision",
+      "path": "docs/decisions/0004-w3c-verifiable-credentials.md",
+      "title": "ADR-0004: W3C Verifiable Credentials",
+      "status": "accepted",
+      "importance": "critical",
+      "targetAudience": ["architects", "product-team", "compliance"]
+    },
+    {
+      "id": "doc:getting-started",
+      "type": "document",
+      "category": "development",
+      "path": "docs/development/getting-started.md",
+      "title": "Getting Started",
+      "importance": "high",
+      "targetAudience": ["developers"]
+    },
+    {
+      "id": "doc:repository-structure",
+      "type": "document",
+      "category": "development",
+      "path": "docs/development/repository-structure.md",
+      "title": "Repository Structure",
+      "importance": "high",
+      "targetAudience": ["developers"]
+    },
+    {
+      "id": "doc:local-development",
+      "type": "document",
+      "category": "development",
+      "path": "docs/development/local-development.md",
+      "title": "Local Development",
+      "importance": "high",
+      "targetAudience": ["developers"]
+    },
+    {
+      "id": "doc:coding-standards",
+      "type": "document",
+      "category": "development",
+      "path": "docs/development/coding-standards.md",
+      "title": "Coding Standards",
+      "importance": "medium",
+      "targetAudience": ["developers"]
+    },
+    {
+      "id": "doc:testing-strategy",
+      "type": "document",
+      "category": "development",
+      "path": "docs/development/testing-strategy.md",
+      "title": "Testing Strategy",
+      "importance": "medium",
+      "targetAudience": ["developers", "qa"]
+    },
+    {
+      "id": "doc:contributing",
+      "type": "document",
+      "category": "development",
+      "path": "docs/development/contributing.md",
+      "title": "Contributing Guide",
+      "importance": "medium",
+      "targetAudience": ["contributors"]
+    },
+    {
+      "id": "doc:api-readme",
+      "type": "document",
+      "category": "api",
+      "path": "docs/api/README.md",
+      "title": "API Overview",
+      "importance": "high",
+      "targetAudience": ["api-consumers", "developers"]
+    },
+    {
+      "id": "doc:api-authentication",
+      "type": "document",
+      "category": "api",
+      "path": "docs/api/authentication.md",
+      "title": "API Authentication",
+      "importance": "high",
+      "targetAudience": ["api-consumers", "frontend-developers"]
+    },
+    {
+      "id": "doc:backoffice-api",
+      "type": "document",
+      "category": "api",
+      "path": "docs/api/backoffice-api.md",
+      "title": "Backoffice API",
+      "importance": "medium",
+      "targetAudience": ["platform-admins", "backend-developers"]
+    },
+    {
+      "id": "doc:businesslogic-api",
+      "type": "document",
+      "category": "api",
+      "path": "docs/api/businesslogic-api.md",
+      "title": "BusinessLogic API",
+      "importance": "high",
+      "targetAudience": ["api-consumers", "frontend-developers"]
+    },
+    {
+      "id": "doc:catalog-api",
+      "type": "document",
+      "category": "api",
+      "path": "docs/api/catalog-api.md",
+      "title": "Catalog API",
+      "importance": "medium",
+      "targetAudience": ["api-consumers", "content-managers"]
+    },
+    {
+      "id": "doc:propagate-api",
+      "type": "document",
+      "category": "api",
+      "path": "docs/api/propagate-api.md",
+      "title": "Propagate API",
+      "importance": "low",
+      "targetAudience": ["integration-developers"]
+    },
+    {
+      "id": "doc:error-handling",
+      "type": "document",
+      "category": "api",
+      "path": "docs/api/error-handling.md",
+      "title": "API Error Handling",
+      "importance": "medium",
+      "targetAudience": ["api-consumers", "developers"]
+    },
+    {
+      "id": "doc:infrastructure-setup",
+      "type": "document",
+      "category": "operations",
+      "path": "docs/operations/infrastructure-setup.md",
+      "title": "Infrastructure Setup",
+      "importance": "high",
+      "targetAudience": ["devops", "platform-admins"]
+    },
+    {
+      "id": "doc:tenant-onboarding",
+      "type": "document",
+      "category": "operations",
+      "path": "docs/operations/tenant-onboarding.md",
+      "title": "Tenant Onboarding",
+      "importance": "high",
+      "targetAudience": ["devops", "platform-admins"]
+    },
+    {
+      "id": "doc:deployment-procedures",
+      "type": "document",
+      "category": "operations",
+      "path": "docs/operations/deployment-procedures.md",
+      "title": "Deployment Procedures",
+      "importance": "high",
+      "targetAudience": ["devops", "developers"]
+    },
+    {
+      "id": "doc:monitoring",
+      "type": "document",
+      "category": "operations",
+      "path": "docs/operations/monitoring.md",
+      "title": "Monitoring",
+      "importance": "high",
+      "targetAudience": ["devops", "sre"]
+    },
+    {
+      "id": "doc:backup-recovery",
+      "type": "document",
+      "category": "operations",
+      "path": "docs/operations/backup-recovery.md",
+      "title": "Backup & Recovery",
+      "importance": "medium",
+      "targetAudience": ["devops", "dba"]
+    },
+    {
+      "id": "doc:troubleshooting",
+      "type": "document",
+      "category": "operations",
+      "path": "docs/operations/troubleshooting.md",
+      "title": "Troubleshooting",
+      "importance": "medium",
+      "targetAudience": ["all-technical"]
+    },
+    {
+      "id": "doc:security-overview",
+      "type": "document",
+      "category": "security",
+      "path": "docs/security/security-overview.md",
+      "title": "Security Overview",
+      "importance": "high",
+      "targetAudience": ["security-team", "architects", "compliance"]
+    },
+    {
+      "id": "doc:security-authentication",
+      "type": "document",
+      "category": "security",
+      "path": "docs/security/authentication.md",
+      "title": "Authentication",
+      "importance": "high",
+      "targetAudience": ["security-team", "backend-developers"]
+    },
+    {
+      "id": "doc:security-authorization",
+      "type": "document",
+      "category": "security",
+      "path": "docs/security/authorization.md",
+      "title": "Authorization",
+      "importance": "high",
+      "targetAudience": ["security-team", "backend-developers"]
+    },
+    {
+      "id": "doc:security-cryptography",
+      "type": "document",
+      "category": "security",
+      "path": "docs/security/cryptography.md",
+      "title": "Cryptography",
+      "importance": "high",
+      "targetAudience": ["security-team", "crypto-specialists"]
+    },
+    {
+      "id": "doc:security-compliance",
+      "type": "document",
+      "category": "security",
+      "path": "docs/security/compliance.md",
+      "title": "Compliance",
+      "importance": "high",
+      "targetAudience": ["compliance", "security-team", "legal"]
+    },
+    {
+      "id": "concept:verifiable-credential",
+      "type": "concept",
+      "name": "Verifiable Credential",
+      "definition": "Tamper-evident credential cryptographically signed by an issuer",
+      "primarySource": "docs/overview/key-concepts.md"
+    },
+    {
+      "id": "concept:did",
+      "type": "concept",
+      "name": "Decentralized Identifier (DID)",
+      "definition": "Globally unique identifier not requiring centralized registration",
+      "primarySource": "docs/overview/key-concepts.md"
+    },
+    {
+      "id": "concept:tenant",
+      "type": "concept",
+      "name": "Tenant",
+      "definition": "Isolated customer environment within the Sybol platform",
+      "primarySource": "docs/overview/key-concepts.md"
+    },
+    {
+      "id": "concept:database-per-tenant",
+      "type": "concept",
+      "name": "Database-per-Tenant",
+      "definition": "Multi-tenancy pattern with separate PostgreSQL database per tenant",
+      "primarySource": "docs/decisions/0003-multi-tenant-database-design.md"
+    },
+    {
+      "id": "concept:cognito",
+      "type": "concept",
+      "name": "AWS Cognito",
+      "definition": "Managed authentication service with User Pools and Identity Pools",
+      "primarySource": "docs/decisions/0001-aws-cognito-authentication.md"
+    },
+    {
+      "id": "concept:sts-assumerole",
+      "type": "concept",
+      "name": "STS AssumeRole",
+      "definition": "AWS operation providing temporary, scoped credentials",
+      "primarySource": "docs/overview/key-concepts.md"
+    },
+    {
+      "id": "concept:lambda",
+      "type": "concept",
+      "name": "AWS Lambda",
+      "definition": "Serverless compute service for event-driven execution",
+      "primarySource": "docs/decisions/0002-serverless-architecture.md"
+    },
+    {
+      "id": "concept:w3c-vc",
+      "type": "concept",
+      "name": "W3C VC Data Model",
+      "definition": "International standard for representing verifiable credentials",
+      "primarySource": "docs/decisions/0004-w3c-verifiable-credentials.md"
+    },
+    {
+      "id": "service:backoffice",
+      "type": "service",
+      "name": "Backoffice Service",
+      "description": "Platform administration and tenant onboarding",
+      "repository": "services/backoffice/"
+    },
+    {
+      "id": "service:businesslogic",
+      "type": "service",
+      "name": "BusinessLogic Service",
+      "description": "Verifiable credentials lifecycle management",
+      "repository": "services/businessLogic/"
+    },
+    {
+      "id": "service:catalog",
+      "type": "service",
+      "name": "Catalog Service",
+      "description": "Document templates and claims management",
+      "repository": "services/catalog/"
+    },
+    {
+      "id": "service:propagate",
+      "type": "service",
+      "name": "Propagate Service",
+      "description": "Cross-tenant event propagation",
+      "repository": "services/propagate/"
+    }
+  ],
+  "edges": [
+    {
+      "source": "doc:README",
+      "target": "doc:project-overview",
+      "type": "references",
+      "weight": 10
+    },
+    {
+      "source": "doc:README",
+      "target": "doc:getting-started",
+      "type": "references",
+      "weight": 10
+    },
+    {
+      "source": "doc:README",
+      "target": "doc:infrastructure-setup",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:README",
+      "target": "doc:api-readme",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:README",
+      "target": "doc:system-overview",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:project-overview",
+      "target": "doc:key-concepts",
+      "type": "references",
+      "weight": 9
+    },
+    {
+      "source": "doc:project-overview",
+      "target": "concept:verifiable-credential",
+      "type": "defines",
+      "weight": 10
+    },
+    {
+      "source": "doc:project-overview",
+      "target": "concept:tenant",
+      "type": "defines",
+      "weight": 8
+    },
+    {
+      "source": "doc:key-concepts",
+      "target": "doc:glossary",
+      "type": "references",
+      "weight": 7
+    },
+    {
+      "source": "doc:key-concepts",
+      "target": "concept:verifiable-credential",
+      "type": "defines",
+      "weight": 10
+    },
+    {
+      "source": "doc:key-concepts",
+      "target": "concept:did",
+      "type": "defines",
+      "weight": 10
+    },
+    {
+      "source": "doc:key-concepts",
+      "target": "concept:tenant",
+      "type": "defines",
+      "weight": 10
+    },
+    {
+      "source": "doc:key-concepts",
+      "target": "concept:cognito",
+      "type": "defines",
+      "weight": 9
+    },
+    {
+      "source": "doc:key-concepts",
+      "target": "concept:sts-assumerole",
+      "type": "defines",
+      "weight": 9
+    },
+    {
+      "source": "doc:system-overview",
+      "target": "doc:component-architecture",
+      "type": "references",
+      "weight": 10
+    },
+    {
+      "source": "doc:system-overview",
+      "target": "doc:data-architecture",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:system-overview",
+      "target": "doc:deployment-architecture",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:component-architecture",
+      "target": "doc:security-architecture",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:component-architecture",
+      "target": "doc:multi-tenancy",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:component-architecture",
+      "target": "service:backoffice",
+      "type": "describes",
+      "weight": 10
+    },
+    {
+      "source": "doc:component-architecture",
+      "target": "service:businesslogic",
+      "type": "describes",
+      "weight": 10
+    },
+    {
+      "source": "doc:component-architecture",
+      "target": "service:catalog",
+      "type": "describes",
+      "weight": 10
+    },
+    {
+      "source": "doc:component-architecture",
+      "target": "service:propagate",
+      "type": "describes",
+      "weight": 10
+    },
+    {
+      "source": "doc:data-architecture",
+      "target": "doc:multi-tenancy",
+      "type": "references",
+      "weight": 9
+    },
+    {
+      "source": "doc:data-architecture",
+      "target": "concept:database-per-tenant",
+      "type": "describes",
+      "weight": 10
+    },
+    {
+      "source": "doc:security-architecture",
+      "target": "doc:multi-tenancy",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:security-architecture",
+      "target": "concept:cognito",
+      "type": "describes",
+      "weight": 9
+    },
+    {
+      "source": "doc:security-architecture",
+      "target": "concept:sts-assumerole",
+      "type": "describes",
+      "weight": 9
+    },
+    {
+      "source": "adr:0001",
+      "target": "doc:security-architecture",
+      "type": "influences",
+      "weight": 10
+    },
+    {
+      "source": "adr:0001",
+      "target": "doc:component-architecture",
+      "type": "influences",
+      "weight": 9
+    },
+    {
+      "source": "adr:0001",
+      "target": "doc:security-authentication",
+      "type": "influences",
+      "weight": 10
+    },
+    {
+      "source": "adr:0001",
+      "target": "doc:security-authorization",
+      "type": "influences",
+      "weight": 9
+    },
+    {
+      "source": "adr:0001",
+      "target": "doc:api-readme",
+      "type": "influences",
+      "weight": 8
+    },
+    {
+      "source": "adr:0001",
+      "target": "doc:api-authentication",
+      "type": "influences",
+      "weight": 10
+    },
+    {
+      "source": "adr:0001",
+      "target": "doc:infrastructure-setup",
+      "type": "influences",
+      "weight": 9
+    },
+    {
+      "source": "adr:0001",
+      "target": "doc:tenant-onboarding",
+      "type": "influences",
+      "weight": 8
+    },
+    {
+      "source": "adr:0001",
+      "target": "concept:cognito",
+      "type": "defines",
+      "weight": 10
+    },
+    {
+      "source": "adr:0002",
+      "target": "doc:system-overview",
+      "type": "influences",
+      "weight": 10
+    },
+    {
+      "source": "adr:0002",
+      "target": "doc:component-architecture",
+      "type": "influences",
+      "weight": 10
+    },
+    {
+      "source": "adr:0002",
+      "target": "doc:deployment-architecture",
+      "type": "influences",
+      "weight": 10
+    },
+    {
+      "source": "adr:0002",
+      "target": "doc:infrastructure-setup",
+      "type": "influences",
+      "weight": 9
+    },
+    {
+      "source": "adr:0002",
+      "target": "doc:deployment-procedures",
+      "type": "influences",
+      "weight": 10
+    },
+    {
+      "source": "adr:0002",
+      "target": "doc:monitoring",
+      "type": "influences",
+      "weight": 7
+    },
+    {
+      "source": "adr:0002",
+      "target": "concept:lambda",
+      "type": "defines",
+      "weight": 10
+    },
+    {
+      "source": "adr:0003",
+      "target": "doc:data-architecture",
+      "type": "influences",
+      "weight": 10
+    },
+    {
+      "source": "adr:0003",
+      "target": "doc:multi-tenancy",
+      "type": "influences",
+      "weight": 10
+    },
+    {
+      "source": "adr:0003",
+      "target": "doc:security-architecture",
+      "type": "influences",
+      "weight": 9
+    },
+    {
+      "source": "adr:0003",
+      "target": "doc:security-authorization",
+      "type": "influences",
+      "weight": 9
+    },
+    {
+      "source": "adr:0003",
+      "target": "doc:security-compliance",
+      "type": "influences",
+      "weight": 9
+    },
+    {
+      "source": "adr:0003",
+      "target": "doc:api-readme",
+      "type": "influences",
+      "weight": 8
+    },
+    {
+      "source": "adr:0003",
+      "target": "doc:infrastructure-setup",
+      "type": "influences",
+      "weight": 9
+    },
+    {
+      "source": "adr:0003",
+      "target": "doc:tenant-onboarding",
+      "type": "influences",
+      "weight": 10
+    },
+    {
+      "source": "adr:0003",
+      "target": "doc:backup-recovery",
+      "type": "influences",
+      "weight": 9
+    },
+    {
+      "source": "adr:0003",
+      "target": "concept:database-per-tenant",
+      "type": "defines",
+      "weight": 10
+    },
+    {
+      "source": "adr:0003",
+      "target": "concept:tenant",
+      "type": "refines",
+      "weight": 9
+    },
+    {
+      "source": "adr:0004",
+      "target": "doc:project-overview",
+      "type": "influences",
+      "weight": 9
+    },
+    {
+      "source": "adr:0004",
+      "target": "doc:key-concepts",
+      "type": "influences",
+      "weight": 10
+    },
+    {
+      "source": "adr:0004",
+      "target": "doc:system-overview",
+      "type": "influences",
+      "weight": 8
+    },
+    {
+      "source": "adr:0004",
+      "target": "doc:component-architecture",
+      "type": "influences",
+      "weight": 9
+    },
+    {
+      "source": "adr:0004",
+      "target": "doc:security-cryptography",
+      "type": "influences",
+      "weight": 10
+    },
+    {
+      "source": "adr:0004",
+      "target": "doc:security-compliance",
+      "type": "influences",
+      "weight": 10
+    },
+    {
+      "source": "adr:0004",
+      "target": "doc:businesslogic-api",
+      "type": "influences",
+      "weight": 10
+    },
+    {
+      "source": "adr:0004",
+      "target": "doc:catalog-api",
+      "type": "influences",
+      "weight": 8
+    },
+    {
+      "source": "adr:0004",
+      "target": "concept:verifiable-credential",
+      "type": "defines",
+      "weight": 10
+    },
+    {
+      "source": "adr:0004",
+      "target": "concept:did",
+      "type": "defines",
+      "weight": 10
+    },
+    {
+      "source": "adr:0004",
+      "target": "concept:w3c-vc",
+      "type": "defines",
+      "weight": 10
+    },
+    {
+      "source": "doc:getting-started",
+      "target": "doc:repository-structure",
+      "type": "references",
+      "weight": 10
+    },
+    {
+      "source": "doc:getting-started",
+      "target": "doc:local-development",
+      "type": "references",
+      "weight": 10
+    },
+    {
+      "source": "doc:repository-structure",
+      "target": "doc:component-architecture",
+      "type": "references",
+      "weight": 7
+    },
+    {
+      "source": "doc:local-development",
+      "target": "doc:coding-standards",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:api-readme",
+      "target": "doc:api-authentication",
+      "type": "references",
+      "weight": 10
+    },
+    {
+      "source": "doc:api-readme",
+      "target": "doc:backoffice-api",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:api-readme",
+      "target": "doc:businesslogic-api",
+      "type": "references",
+      "weight": 10
+    },
+    {
+      "source": "doc:api-readme",
+      "target": "doc:catalog-api",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:api-readme",
+      "target": "doc:propagate-api",
+      "type": "references",
+      "weight": 6
+    },
+    {
+      "source": "doc:api-authentication",
+      "target": "doc:security-authentication",
+      "type": "references",
+      "weight": 9
+    },
+    {
+      "source": "doc:api-authentication",
+      "target": "concept:cognito",
+      "type": "describes",
+      "weight": 9
+    },
+    {
+      "source": "doc:backoffice-api",
+      "target": "doc:component-architecture",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:backoffice-api",
+      "target": "service:backoffice",
+      "type": "documents",
+      "weight": 10
+    },
+    {
+      "source": "doc:businesslogic-api",
+      "target": "doc:component-architecture",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:businesslogic-api",
+      "target": "doc:key-concepts",
+      "type": "references",
+      "weight": 9
+    },
+    {
+      "source": "doc:businesslogic-api",
+      "target": "service:businesslogic",
+      "type": "documents",
+      "weight": 10
+    },
+    {
+      "source": "doc:businesslogic-api",
+      "target": "concept:verifiable-credential",
+      "type": "describes",
+      "weight": 10
+    },
+    {
+      "source": "doc:catalog-api",
+      "target": "doc:component-architecture",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:catalog-api",
+      "target": "service:catalog",
+      "type": "documents",
+      "weight": 10
+    },
+    {
+      "source": "doc:propagate-api",
+      "target": "doc:integration-architecture",
+      "type": "references",
+      "weight": 9
+    },
+    {
+      "source": "doc:propagate-api",
+      "target": "service:propagate",
+      "type": "documents",
+      "weight": 10
+    },
+    {
+      "source": "doc:infrastructure-setup",
+      "target": "doc:deployment-architecture",
+      "type": "references",
+      "weight": 9
+    },
+    {
+      "source": "doc:infrastructure-setup",
+      "target": "doc:tenant-onboarding",
+      "type": "references",
+      "weight": 9
+    },
+    {
+      "source": "doc:tenant-onboarding",
+      "target": "doc:infrastructure-setup",
+      "type": "depends-on",
+      "weight": 10
+    },
+    {
+      "source": "doc:deployment-procedures",
+      "target": "doc:deployment-architecture",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:deployment-procedures",
+      "target": "doc:monitoring",
+      "type": "references",
+      "weight": 7
+    },
+    {
+      "source": "doc:monitoring",
+      "target": "doc:troubleshooting",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:backup-recovery",
+      "target": "doc:data-architecture",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:security-overview",
+      "target": "doc:security-architecture",
+      "type": "references",
+      "weight": 10
+    },
+    {
+      "source": "doc:security-architecture",
+      "target": "doc:security-authentication",
+      "type": "references",
+      "weight": 9
+    },
+    {
+      "source": "doc:security-architecture",
+      "target": "doc:security-authorization",
+      "type": "references",
+      "weight": 9
+    },
+    {
+      "source": "doc:security-architecture",
+      "target": "doc:security-cryptography",
+      "type": "references",
+      "weight": 9
+    },
+    {
+      "source": "doc:security-authentication",
+      "target": "doc:api-authentication",
+      "type": "referenced-by",
+      "weight": 8
+    },
+    {
+      "source": "doc:security-authorization",
+      "target": "concept:sts-assumerole",
+      "type": "describes",
+      "weight": 10
+    },
+    {
+      "source": "doc:security-compliance",
+      "target": "adr:0003",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "doc:security-compliance",
+      "target": "adr:0004",
+      "type": "references",
+      "weight": 8
+    },
+    {
+      "source": "concept:verifiable-credential",
+      "target": "concept:did",
+      "type": "uses",
+      "weight": 9
+    },
+    {
+      "source": "concept:verifiable-credential",
+      "target": "concept:w3c-vc",
+      "type": "implements",
+      "weight": 10
+    },
+    {
+      "source": "concept:tenant",
+      "target": "concept:database-per-tenant",
+      "type": "uses",
+      "weight": 10
+    },
+    {
+      "source": "concept:tenant",
+      "target": "concept:cognito",
+      "type": "authenticated-via",
+      "weight": 9
+    },
+    {
+      "source": "concept:tenant",
+      "target": "concept:sts-assumerole",
+      "type": "uses",
+      "weight": 9
+    },
+    {
+      "source": "concept:cognito",
+      "target": "concept:sts-assumerole",
+      "type": "enables",
+      "weight": 9
+    },
+    {
+      "source": "service:businesslogic",
+      "target": "concept:verifiable-credential",
+      "type": "manages",
+      "weight": 10
+    },
+    {
+      "source": "service:backoffice",
+      "target": "concept:tenant",
+      "type": "manages",
+      "weight": 10
+    },
+    {
+      "source": "service:catalog",
+      "target": "concept:verifiable-credential",
+      "type": "provides-templates-for",
+      "weight": 8
+    }
+  ],
+  "navigationPaths": [
+    {
+      "name": "new-developer-onboarding",
+      "description": "Optimal path for new developers",
+      "steps": [
+        "doc:README",
+        "doc:project-overview",
+        "doc:key-concepts",
+        "doc:getting-started",
+        "doc:repository-structure",
+        "doc:local-development",
+        "doc:coding-standards",
+        "doc:api-readme",
+        "doc:component-architecture"
+      ],
+      "estimatedTime": "4-6 hours"
+    },
+    {
+      "name": "architect-deep-dive",
+      "description": "Architecture understanding path",
+      "steps": [
+        "doc:README",
+        "doc:project-overview",
+        "doc:system-overview",
+        "adr:0001",
+        "adr:0002",
+        "adr:0003",
+        "adr:0004",
+        "doc:security-architecture",
+        "doc:deployment-architecture",
+        "doc:data-architecture",
+        "doc:component-architecture"
+      ],
+      "estimatedTime": "6-8 hours"
+    },
+    {
+      "name": "devops-setup",
+      "description": "Infrastructure deployment path",
+      "steps": [
+        "doc:README",
+        "doc:infrastructure-setup",
+        "doc:deployment-architecture",
+        "doc:tenant-onboarding",
+        "doc:deployment-procedures",
+        "doc:monitoring",
+        "doc:backup-recovery",
+        "doc:troubleshooting"
+      ],
+      "estimatedTime": "3-4 hours"
+    },
+    {
+      "name": "api-consumer",
+      "description": "API integration path",
+      "steps": [
+        "doc:README",
+        "doc:api-readme",
+        "doc:api-authentication",
+        "doc:businesslogic-api",
+        "doc:catalog-api",
+        "doc:error-handling",
+        "doc:key-concepts"
+      ],
+      "estimatedTime": "2-3 hours"
+    },
+    {
+      "name": "security-audit",
+      "description": "Security review path",
+      "steps": [
+        "doc:README",
+        "doc:security-overview",
+        "doc:security-architecture",
+        "doc:security-authentication",
+        "doc:security-authorization",
+        "doc:security-cryptography",
+        "doc:security-compliance",
+        "adr:0001",
+        "adr:0003",
+        "adr:0004"
+      ],
+      "estimatedTime": "5-7 hours"
+    }
+  ],
+  "graphMetrics": {
+    "totalNodes": 52,
+    "totalEdges": 117,
+    "averageDegree": 4.5,
+    "graphDensity": 0.088,
+    "clusteringCoefficient": 0.42,
+    "averagePathLength": 2.8,
+    "diameter": 6,
+    "stronglyConnectedComponents": 1,
+    "documentNodes": 38,
+    "conceptNodes": 8,
+    "adrNodes": 4,
+    "serviceNodes": 4
+  }
+}

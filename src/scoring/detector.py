@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 import torch
 from transformers import AutoImageProcessor, AutoModelForImageClassification
@@ -8,8 +9,8 @@ from .constants import DEEPFAKE_MODEL_ID
 
 @dataclass
 class DeepfakeModel:
-    model: AutoModelForImageClassification
-    processor: AutoImageProcessor
+    model: Any
+    processor: Any
     model_id: str
 
     @property

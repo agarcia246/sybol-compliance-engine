@@ -1,14 +1,16 @@
+from datetime import datetime
+
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from api.schemas import AnalyzeResponse
-from scoring.pipeline import score_image
-from scoring.preprocess import ScoringError
+from src.api.schemas import AnalyzeResponse
+from src.scoring.pipeline import score_image
+from src.scoring.preprocess import ScoringError
 
 router = APIRouter()
 
 
 @router.post(
-    "",
+    "/analyze",
     response_model=AnalyzeResponse,
     summary="Score media authenticity",
     responses={
@@ -35,4 +37,6 @@ async def analyze(file: UploadFile = File(...)):
         score_breakdown=[breakdown.m, breakdown.a, breakdown.v, breakdown.p],
         compliance_status=result.compliance_status.value,
         media_hash=result.media_hash,
+        model_version=result.model_version,
+        analysis_timestamp=datetime.utcnow().isoformat(),
     )

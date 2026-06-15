@@ -1,3 +1,5 @@
+from typing import cast
+
 import cv2
 import numpy as np
 
@@ -68,7 +70,10 @@ def _edge_blending_score(bgr: np.ndarray) -> float:
 
     edge_pixels = edges > 0
     local_var = cv2.GaussianBlur(
-        (gray.astype(np.float32) - cv2.GaussianBlur(gray, (0, 0), 3)) ** 2,
+        cast(
+            np.ndarray,
+            (gray.astype(np.float32) - cv2.GaussianBlur(gray, (0, 0), 3)) ** 2,
+        ),
         (0, 0),
         3,
     )

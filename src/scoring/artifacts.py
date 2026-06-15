@@ -1,3 +1,5 @@
+from typing import cast
+
 import cv2
 import numpy as np
 
@@ -46,9 +48,9 @@ def _noise_residual_score(model_image) -> float:
     if gray.size == 0:
         return 0.5
 
-    blurred = cv2.GaussianBlur(gray, (0, 0), 1.5)
+    blurred = cv2.GaussianBlur(cast(np.ndarray, gray), (0, 0), 1.5)
     residual = gray - blurred
-    variance = float(np.var(residual))
+    variance = float(np.var(cast(np.ndarray, residual)))
 
     # Very low residual variance suggests overly smooth synthetic imagery.
     if variance < 5.0:

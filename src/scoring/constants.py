@@ -48,6 +48,4 @@ EMPTY_PROVENANCE_DEFAULT = 0.5
 
 PLATT_ENABLED = False
 
-SUPPORTED_MIME_TYPES = frozenset(
-    {"image/jpeg", "image/png", "image/webp"}
-)
+SUPPORTED_MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
