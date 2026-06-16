@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sybol.ai/schemas/test/media-compliance-credential.json",
+  "title": "Media Compliance Verifiable Credential (W3C VC Data Model 1.1, unsigned)",
+  "description": "Structural schema used by TC-006 to validate the UNSIGNED payload emitted by credentials.vc_builder.build_vc_payload. The builder targets the W3C VC Data Model 1.1 (issuanceDate, @context .../2018/credentials/v1). issuer, credentialStatus, and proof are intentionally absent here: issuer is resolved server-side from the tenant, and credentialStatus + proof are attached later by Sybol signing (validated separately in test_sybol_issuance.py).",
+  "type": "object",
+  "required": [
+    "@context",
+    "id",
+    "type",
+    "issuanceDate",
+    "credentialSubject"
+  ],
+  "properties": {
+    "@context": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "contains": { "const": "https://www.w3.org/2018/credentials/v1" }
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^urn:uuid:[0-9a-fA-F-]{36}$"
+    },
+    "type": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "contains": { "const": "VerifiableCredential" }
+    },
+    "issuanceDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expirationDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "credentialSubject": {
+      "type": "object",
+      "required": [
+        "id",
+        "mediaHash",
+        "authenticityScore",
+        "scoreBreakdown",
+        "complianceStatus",
+        "modelVersion",
+        "analysisTimestamp",
+        "regulationRefs"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "mediaHash": { "type": "string", "minLength": 1 },
+        "authenticityScore": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "scoreBreakdown": {
+          "type": "object",
+          "required": ["m", "a", "v", "p"],
+          "properties": {
+            "m": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+            "a": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+            "v": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+            "p": { "type": "number", "minimum": 0.0, "maximum": 1.0 }
+          }
+        },
+        "complianceStatus": {
+          "type": "string",
+          "enum": ["compliant", "non-compliant", "review"]
+        },
+        "modelVersion": { "type": "string", "minLength": 1 },
+        "analysisTimestamp": { "type": "string", "format": "date-time" },
+        "regulationRefs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["regulation", "article", "url"],
+            "properties": {
+              "regulation": { "type": "string" },
+              "article": { "type": "string" },
+              "url": { "type": "string" }
+            }
+          }
+        },
+        "evidenceUrl": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
