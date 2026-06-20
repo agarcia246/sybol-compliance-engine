@@ -52,16 +52,25 @@ PYTHONPATH=src python3 scripts/export_golden_scores.py
 | Sybol `/api/issue` signing | blocked (login + catalog doc) |
 | RAG TC-005 | blocked (0/5 PDFs, Qdrant not running) |
 
-### Scoring diagnosis (golden set)
+### Scoring calibration (v2)
 
 See `qa/test_cases/golden/scoring_report.csv`.
 
-| Label | TC band pass | Notes |
-|-------|-------------:|-------|
-| authentic | 30/30 | Provenance reference match applies compliant floor |
-| ai_generated | 37/37 | Weak metadata + no provenance match capped below 0.3 |
+| Label | TC pass | Score range | Signal notes |
+|-------|--------:|-------------|--------------|
+| authentic | 30/30 | 0.80 – 0.94 | Provenance match floor + EXIF-rich JPEG boost |
+| ai_generated | 37/37 | 0.26 (capped) | PNG/no-EXIF artifact path + synthetic profile cap |
 
-Calibration uses provenance-aware rules in `scorer.py` (see `src/scoring/constants.py`). **Requires `qa/test_cases/authentic/` reference index** for authentic labels in the golden set.
+**Layers:** format-aware artifacts (`artifacts.py`) → weighted sum → profile rules (`scorer.py`).
+
+| Rule | Purpose |
+|------|---------|
+| Provenance match floor (`p ≥ 0.9`) | Known reference photos → ≥ 0.82 |
+| EXIF-rich floor (`m ≥ 0.72`) | Camera JPEGs without reference index → ≥ 0.80 |
+| Synthetic cap (`m ≤ 0.45`, `p ≤ 0.28`) | AI PNG class → ≤ 0.26 |
+| Edited clamp (TC-003 ready) | Partial metadata + mid artifacts → 0.35–0.65 |
+
+Optional Platt calibration: `PYTHONPATH=src python3 scripts/fit_platt_calibration.py` (off by default).
 
 ## Test cases (README targets)
 
