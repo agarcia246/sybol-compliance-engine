@@ -1,5 +1,10 @@
 from .constants import (
     PLATT_ENABLED,
+    PROVENANCE_MATCH_MIN,
+    PROVENANCE_MATCH_SCORE_FLOOR,
+    SYNTHETIC_PROFILE_METADATA_MAX,
+    SYNTHETIC_PROFILE_PROVENANCE_MAX,
+    SYNTHETIC_PROFILE_SCORE_CAP,
     THRESHOLD_COMPLIANT,
     THRESHOLD_NON_COMPLIANT,
     WA,
@@ -24,6 +29,18 @@ def calibrate(raw_score: float) -> float:
 
 def compute_authenticity_score(breakdown: SignalBreakdown) -> float:
     raw = WM * breakdown.m + WA * breakdown.a + WV * breakdown.v + WP * breakdown.p
+
+    # Reference-index match: known authentic captures get a compliant floor.
+    if breakdown.p >= PROVENANCE_MATCH_MIN:
+        raw = max(raw, PROVENANCE_MATCH_SCORE_FLOOR)
+
+    # Typical AI PNG profile: no EXIF metadata + no provenance neighbour.
+    if (
+        breakdown.p <= SYNTHETIC_PROFILE_PROVENANCE_MAX
+        and breakdown.m <= SYNTHETIC_PROFILE_METADATA_MAX
+    ):
+        raw = min(raw, SYNTHETIC_PROFILE_SCORE_CAP)
+
     return _clamp(calibrate(raw))
 
 

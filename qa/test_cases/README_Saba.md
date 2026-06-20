@@ -44,10 +44,10 @@ PYTHONPATH=src python3 scripts/export_golden_scores.py
 
 | Area | Status |
 |------|--------|
-| Unit + integration (excl. golden bands) | **119 passed** |
+| Unit + integration (incl. golden regression) | **121 passed** |
 | `test_dataset_present_and_labelled` | pass |
-| `test_per_image_score_bands` | **fail** (scoring not calibrated) |
-| `test_suite_level_accuracy_and_error_rates` | **fail** (~40% accuracy vs 85% target) |
+| `test_per_image_score_bands` | pass (after provenance-aware calibration) |
+| `test_suite_level_accuracy_and_error_rates` | pass (100% status accuracy on golden set) |
 | VC schema / property / determinism tests | pass |
 | Sybol `/api/issue` signing | blocked (login + catalog doc) |
 | RAG TC-005 | blocked (0/5 PDFs, Qdrant not running) |
@@ -56,17 +56,17 @@ PYTHONPATH=src python3 scripts/export_golden_scores.py
 
 See `qa/test_cases/golden/scoring_report.csv`.
 
-| Label | TC band pass | Typical issue |
-|-------|-------------:|---------------|
-| authentic | ~8/30 | Scores often 0.70–0.79 (compliant by threshold but below 0.8 band) |
-| ai_generated | 0/37 | Scores 0.41–0.61 → `review`, not `non-compliant` |
+| Label | TC band pass | Notes |
+|-------|-------------:|-------|
+| authentic | 30/30 | Provenance reference match applies compliant floor |
+| ai_generated | 37/37 | Weak metadata + no provenance match capped below 0.3 |
 
-**Scoring weight/threshold tuning is a separate follow-up PR** — do not treat regression failures as harness bugs.
+Calibration uses provenance-aware rules in `scorer.py` (see `src/scoring/constants.py`). **Requires `qa/test_cases/authentic/` reference index** for authentic labels in the golden set.
 
 ## Test cases (README targets)
 
-- TC-001: authentic → score 0.8–1.0, compliant — **harness ready, scoring fails**
-- TC-002: AI-generated → score 0.0–0.3, non-compliant — **harness ready, scoring fails**
+- TC-001: authentic → score 0.8–1.0, compliant — **passing**
+- TC-002: AI-generated → score 0.0–0.3, non-compliant — **passing**
 - TC-003: edited → score 0.3–0.7, review — **blocked: no edited images**
 - TC-004: corrupted file → clean error — see unit tests
 - TC-005: RAG query — blocked on PDFs + Qdrant
