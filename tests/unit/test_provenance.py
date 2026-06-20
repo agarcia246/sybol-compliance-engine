@@ -16,3 +16,4 @@ def test_matching_reference_scores_high(
     preprocessed = preprocess(sample_png_bytes, content_type="image/png")
     score = provenance.score_provenance(preprocessed)
     assert 0.0 <= score <= 1.0
+    provenance.rebuild_provenance_index()
